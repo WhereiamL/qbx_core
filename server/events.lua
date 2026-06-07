@@ -51,6 +51,7 @@ AddEventHandler('playerDropped', function(reason)
     })
     player.Functions.Save()
     QBX.Player_Buckets[player.PlayerData.license] = nil
+    QBX.DeindexPlayer(src)
     QBX.Players[src] = nil
 end)
 

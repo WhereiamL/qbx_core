@@ -55,12 +55,38 @@ end
 
 exports('GetPlayer', GetPlayer)
 
+---Registers a loaded player in the reverse lookup indexes.
+---@param player Player
+function QBX.IndexPlayer(player)
+    local data = player.PlayerData
+    if data.citizenid then QBX.PlayerIndex.byCitizenId[data.citizenid] = data.source end
+    if data.userId then QBX.PlayerIndex.byUserId[data.userId] = data.source end
+end
+
+---Removes a player from the reverse lookup indexes.
+---@param source Source
+function QBX.DeindexPlayer(source)
+    local player = QBX.Players[source]
+    if not player then return end
+    local data = player.PlayerData
+    if data.citizenid and QBX.PlayerIndex.byCitizenId[data.citizenid] == source then
+        QBX.PlayerIndex.byCitizenId[data.citizenid] = nil
+    end
+    if data.userId and QBX.PlayerIndex.byUserId[data.userId] == source then
+        QBX.PlayerIndex.byUserId[data.userId] = nil
+    end
+end
+
 ---@param citizenid string
 ---@return Player?
 function GetPlayerByCitizenId(citizenid)
-    for src in pairs(QBX.Players) do
-        if QBX.Players[src].PlayerData.citizenid == citizenid then
-            return QBX.Players[src]
+    local src = QBX.PlayerIndex.byCitizenId[citizenid]
+    if src and QBX.Players[src] then return QBX.Players[src] end
+
+    -- Fallback keeps correctness if the index ever drifts from QBX.Players.
+    for source in pairs(QBX.Players) do
+        if QBX.Players[source].PlayerData.citizenid == citizenid then
+            return QBX.Players[source]
         end
     end
 end
@@ -70,9 +96,12 @@ exports('GetPlayerByCitizenId', GetPlayerByCitizenId)
 ---@param userId string
 ---@return Player?
 function GetPlayerByUserId(userId)
-    for src in pairs(QBX.Players) do
-        if QBX.Players[src].PlayerData.userId == userId then
-            return QBX.Players[src]
+    local src = QBX.PlayerIndex.byUserId[userId]
+    if src and QBX.Players[src] then return QBX.Players[src] end
+
+    for source in pairs(QBX.Players) do
+        if QBX.Players[source].PlayerData.userId == userId then
+            return QBX.Players[source]
         end
     end
 end

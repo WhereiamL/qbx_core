@@ -27,6 +27,16 @@ QBX.Shared = require 'shared.main'
 
 ---@type table<Source, Player>
 QBX.Players = {}
+
+-- Reverse lookup indexes so GetPlayerBy* are O(1) instead of scanning every
+-- online player on each call. Maintained on player load/unload.
+QBX.PlayerIndex = {
+    ---@type table<string, Source>
+    byCitizenId = {},
+    ---@type table<integer, Source>
+    byUserId = {},
+}
+
 GlobalState.PlayerCount = 0
 GlobalState.MaxPlayers = GetConvarInt('sv_maxclients', 48)
 
