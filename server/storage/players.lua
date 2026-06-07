@@ -13,6 +13,14 @@ local function createUsersTable()
             PRIMARY KEY (`userId`)
         ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ]])
+
+    -- Identifier lookups on connect (fetchUserByIdentifier) hit these columns.
+    -- Without indexes every connect is a full table scan of `users`, which grows
+    -- unbounded and turns into a 1s+ hitch on busy servers.
+    MySQL.query('CREATE INDEX IF NOT EXISTS `idx_users_license` ON `users` (`license`)')
+    MySQL.query('CREATE INDEX IF NOT EXISTS `idx_users_license2` ON `users` (`license2`)')
+    MySQL.query('CREATE INDEX IF NOT EXISTS `idx_users_fivem` ON `users` (`fivem`)')
+    MySQL.query('CREATE INDEX IF NOT EXISTS `idx_users_discord` ON `users` (`discord`)')
 end
 
 ---@param identifiers table<PlayerIdentifier, string>
@@ -79,6 +87,25 @@ end
 local function fetchBan(request)
     local column, value = getBanId(request)
     local result = MySQL.single.await('SELECT expire, reason FROM bans WHERE ' ..column.. ' = ?', { value })
+    return result and {
+        expire = result.expire,
+        reason = result.reason,
+    } or nil
+end
+
+---Resolves a ban across multiple licenses in a single indexed query, avoiding
+---the sequential license2 -> license round trips on connect.
+---@param licenses string[]
+---@return BanEntity?
+local function fetchBanByLicenses(licenses)
+    if #licenses == 0 then return nil end
+
+    local placeholders = ('?,'):rep(#licenses - 1) .. '?'
+    local result = MySQL.single.await(
+        ('SELECT expire, reason FROM bans WHERE license IN (%s) LIMIT 1'):format(placeholders),
+        licenses
+    )
+
     return result and {
         expire = result.expire,
         reason = result.reason,
@@ -405,6 +432,7 @@ return {
     fetchUserByIdentifier = fetchUserByIdentifier,
     insertBan = insertBan,
     fetchBan = fetchBan,
+    fetchBanByLicenses = fetchBanByLicenses,
     deleteBan = deleteBan,
     upsertPlayerEntity = upsertPlayerEntity,
     fetchPlayerSkin = fetchPlayerSkin,

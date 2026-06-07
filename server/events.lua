@@ -78,11 +78,12 @@ end
 local function onPlayerConnecting(name, _, deferrals)
     local src = source --[[@as string]]
     local license = GetPlayerIdentifierByType(src, 'license2') or GetPlayerIdentifierByType(src, 'license')
-    local userId = storage.fetchUserByIdentifier(license)
     deferrals.defer()
 
     -- Mandatory wait
     Wait(0)
+
+    local userId = license and storage.fetchUserByIdentifier(license)
 
     if serverConfig.closed then
         if not IsPlayerAceAllowed(src, 'qbadmin.join') then
