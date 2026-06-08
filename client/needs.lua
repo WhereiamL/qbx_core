@@ -1,12 +1,11 @@
 local config = require 'config.survival'
 local playerState = LocalPlayer.state
-local warmth = 0       -- toplina odjeće (smanjuje hladnoću)
-local clothingHeat = 0 -- pregrijavanje od odjeće (diže temperaturu u vrućim zonama)
+local warmth = 0
+local clothingHeat = 0
 
 exports('SetClothingWarmth', function(level) warmth = tonumber(level) or 0 end)
 exports('SetClothingHeat', function(level) clothingHeat = tonumber(level) or 0 end)
 
--- HUD eventi (qbx_hud može slušati ove)
 AddStateBagChangeHandler('temperature', ('player:%s'):format(cache.serverId), function(_, _, value)
     TriggerEvent('hud:client:UpdateTemperature', value)
 end)
@@ -20,7 +19,6 @@ AddStateBagChangeHandler('radiation', ('player:%s'):format(cache.serverId), func
     TriggerEvent('hud:client:UpdateRadiation', value)
 end)
 
--- TEMPERATURA: javljaj okolinu serveru
 CreateThread(function()
     if not config.temperature.enabled then return end
     local t = config.temperature
@@ -32,7 +30,7 @@ CreateThread(function()
             local hour = GetClockHours()
             local rain = GetRainLevel() > 0.1
             local water = IsEntityInWater(ped) or IsPedSwimming(ped)
-            playerState:set('wet', rain or water, false) -- za HUD debuff (wetness)
+            playerState:set('wet', rain or water, false)
             TriggerServerEvent('qbx_core:server:tempTick', {
                 night = hour >= 22 or hour < 6,
                 rain = rain,
@@ -46,7 +44,6 @@ CreateThread(function()
     end
 end)
 
--- efekti temperature (drhtanje + HP šteta na ekstremu -> vodi u DOWNED)
 CreateThread(function()
     if not config.temperature.enabled then return end
     local t = config.temperature
@@ -67,7 +64,6 @@ CreateThread(function()
     end
 end)
 
--- mjehur/crijeva: nelagoda (blokira sprint dok je puno)
 CreateThread(function()
     while true do
         local sleep = 500
@@ -75,22 +71,20 @@ CreateThread(function()
             or (playerState.bowel or 0) >= config.bowel.discomfort
         if full and QBX.IsLoggedIn and not playerState.isDead then
             sleep = 0
-            DisableControlAction(0, 21, true) -- sprint
+            DisableControlAction(0, 21, true)
         end
         Wait(sleep)
     end
 end)
 
--- pokreni particle efekat na karlici, vrati handle (ili nil)
 local function startRelievePtfx(cfg)
     if not cfg.ptfx or not lib.requestNamedPtfxAsset(cfg.ptfx.dict, 1000) then return end
     UseParticleFxAsset(cfg.ptfx.dict)
     local o = cfg.ptfx.offset or vec3(0.0, 0.0, 0.0)
-    local bone = GetPedBoneIndex(cache.ped, 11816) -- lower body
+    local bone = GetPedBoneIndex(cache.ped, 11816)
     return StartParticleFxLoopedOnEntityBone(cfg.ptfx.name, cache.ped, o.x, o.y, o.z, 0.0, 0.0, 0.0, bone, 1.0, false, false, false)
 end
 
--- olakšanje
 local function relieve(kind)
     local cfg = kind == 'pee' and config.relieve.pee or config.relieve.poop
     local stat = kind == 'pee' and 'bladder' or 'bowel'
@@ -114,7 +108,6 @@ end
 RegisterCommand('piski', function() relieve('pee') end, false)
 RegisterCommand('kaki', function() relieve('poop') end, false)
 
--- auto-pražnjenje (sramota)
 RegisterNetEvent('qbx_core:client:autoRelieve', function(kind)
     local cfg = kind == 'pee' and config.relieve.pee or config.relieve.poop
     exports.qbx_core:Notify(kind == 'pee' and 'Upiškio si se...' or 'Ukakio si se...', 'error')
@@ -125,17 +118,14 @@ RegisterNetEvent('qbx_core:client:autoRelieve', function(kind)
     if fx then SetTimeout(3000, function() StopParticleFxLooped(fx, false) end) end
 end)
 
--- topli/hladni napici (ox_inventory item -> ovaj export)
 exports('useHotDrink', function() TriggerServerEvent('qbx_core:server:drinkTemp', 'hot') end)
 exports('useColdDrink', function() TriggerServerEvent('qbx_core:server:drinkTemp', 'cold') end)
 
--- ========================== RADIJACIJA ==========================
-local radProtection = 0 -- 0..1 (1 = hazmat, puni imunitet); postavlja je clothing/hazmat skripta
+local radProtection = 0
 exports('SetRadiationProtection', function(level)
     radProtection = math.max(0, math.min(1, tonumber(level) or 0))
 end)
 
--- vrati najjaču zonu/intenzitet na trenutnoj poziciji (lokalno, iz configa)
 local function currentRadField()
     local coords = GetEntityCoords(cache.ped)
     local best = 0
@@ -148,7 +138,6 @@ local function currentRadField()
     return best
 end
 
--- javljaj server-u izloženost
 CreateThread(function()
     if not config.radiation.enabled then return end
     while true do
@@ -164,7 +153,6 @@ CreateThread(function()
     end
 end)
 
--- efekti radijacije (muka/distorzija + HP šteta -> DOWNED)
 CreateThread(function()
     if not config.radiation.enabled then return end
     local r = config.radiation
@@ -197,7 +185,6 @@ CreateThread(function()
     end
 end)
 
--- geiger brojač (toggle); brzina tikanja skalira sa jačinom polja
 local geigerOn = false
 local function toggleGeiger()
     if not geigerOn then
@@ -213,7 +200,7 @@ local function toggleGeiger()
                 local intensity = currentRadField()
                 if intensity > 0 and not playerState.isDead then
                     PlaySoundFrontend(-1, g.soundName, g.soundSet, true)
-                    -- jači intenzitet = kraći razmak između tikova
+
                     local ratio = math.min(intensity / 10, 1.0)
                     Wait(math.floor(g.maxInterval - (g.maxInterval - g.minInterval) * ratio))
                 else
@@ -227,7 +214,6 @@ local function toggleGeiger()
     end
 end
 RegisterCommand('geiger', toggleGeiger, false)
-exports('toggleGeiger', toggleGeiger) -- ox_inventory geiger item
+exports('toggleGeiger', toggleGeiger)
 
--- anti-rad lijek (ox_inventory item -> ovaj export)
 exports('useAntiRad', function() TriggerServerEvent('qbx_core:server:antiRad') end)

@@ -1,7 +1,6 @@
 local config = require 'config.clothing'
 local CLOTHING_FILE = 'data/clothing.json'
 
--- definicije snimljene preko /outfitcapture (samo one idu u json; config je odvojen)
 local savedDefs = {}
 
 local function loadSaved()
@@ -14,7 +13,6 @@ local function loadSaved()
 end
 loadSaved()
 
--- config.items + savedDefs (json override-uje config kod istog imena)
 local function allDefs()
     local defs = {}
     for name, def in pairs(config.items) do defs[name] = def end
@@ -26,12 +24,10 @@ local function persist()
     SaveResourceFile(GetCurrentResourceName(), CLOTHING_FILE, json.encode(savedDefs, { indent = true }), -1)
 end
 
--- klijent traži sve definicije (za equip)
 lib.callback.register('qbx_core:getClothingDefs', function()
     return allDefs()
 end)
 
--- izgradi metadata + opis za generički 'clothing' item
 local function statDesc(stats)
     stats = stats or {}
     local lines = {}
@@ -48,11 +44,10 @@ local function buildMeta(defName, def)
         description = statDesc(def.stats),
         stats = def.stats,
     }
-    if def.image then meta.imageurl = def.image end -- custom slika po komadu (URL ili putanja)
+    if def.image then meta.imageurl = def.image end
     return meta
 end
 
--- daj igraču generički clothing item s metadatom date definicije
 local function giveClothing(src, defName, count)
     local def = allDefs()[defName]
     if not def then return false end
@@ -60,13 +55,12 @@ local function giveClothing(src, defName, count)
 end
 exports('GiveClothingItem', giveClothing)
 
--- admin: /giveclothing [serverId] <defName> [count]  (konzola: serverId obavezan)
 RegisterCommand('giveclothing', function(src, args)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'group.admin') then return end
     local target = tonumber(args[1])
     local defName = args[2]
     if not defName then
-        -- /giveclothing <defName> -> sebi (samo igrač)
+
         defName = args[1]
         target = src ~= 0 and src or nil
     end
@@ -74,7 +68,6 @@ RegisterCommand('giveclothing', function(src, args)
     giveClothing(target, defName, tonumber(args[3]) or 1)
 end, true)
 
--- spoji novu (per-gender) varijantu u postojeću definiciju
 local function mergeDef(name, def)
     local existing = savedDefs[name]
     if not (existing and existing.pieces) then
@@ -99,7 +92,6 @@ local function mergeDef(name, def)
     return existing
 end
 
--- DEV: capture (auto-save u json). Samo admin + devCapture.
 RegisterNetEvent('qbx_core:server:captureClothing', function(name, def)
     local src = source
     if not config.devCapture then return end
@@ -108,13 +100,11 @@ RegisterNetEvent('qbx_core:server:captureClothing', function(name, def)
 
     local merged = mergeDef(name, def)
     persist()
-    TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, merged) -- live svima
-    giveClothing(src, name, 1) -- odmah daj nosivi item za test
+    TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, merged)
+    giveClothing(src, name, 1)
     TriggerClientEvent('qbx_core:client:captureDone', src, name)
 end)
 
--- ===================== /dodaj : definicija + slika =====================
--- generiši jedinstveno ime iz prefiksa (jakna_1, jakna_2, ...)
 local function uniqueName(prefix)
     prefix = (tostring(prefix or 'item'):lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
     if prefix == '' then prefix = 'item' end
@@ -123,14 +113,12 @@ local function uniqueName(prefix)
     return prefix .. '_' .. n
 end
 
--- koji spol nosi ova def (po prvom komadu)
 local function defGender(def)
     local p = def.pieces and def.pieces[1]
     if not p then return nil end
     if p.male then return 'male' elseif p.female then return 'female' end
 end
 
--- potpis izgleda za dati spol (za provjeru duplikata)
 local function defSignature(def, gender)
     local parts, has = {}, false
     for _, p in ipairs(def.pieces or {}) do
@@ -145,7 +133,6 @@ local function defSignature(def, gender)
     return table.concat(parts, '|')
 end
 
--- nađi postojeću def s identičnim izgledom (da ne dupliramo)
 local function findDuplicate(def)
     local gender = defGender(def)
     if not gender then return nil end
@@ -156,14 +143,13 @@ local function findDuplicate(def)
     end
 end
 
--- kreiraj novu def, vrati ime + da li je već postojala (item se da nakon slike)
 lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def)
     if not config.addCommand then return false end
     if not IsPlayerAceAllowed(source, 'group.admin') then return false end
     if type(def) ~= 'table' or type(def.pieces) ~= 'table' then return false end
 
     local dup = findDuplicate(def)
-    if dup then return dup, true end -- već postoji isti izgled
+    if dup then return dup, true end
 
     local name = uniqueName(prefix)
     savedDefs[name] = def
@@ -172,7 +158,6 @@ lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def
     return name, false
 end)
 
--- base64 dekoder (za PNG iz NUI canvasa)
 local B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local function b64decode(data)
     data = data:gsub('[^' .. B64 .. '=]', '')
@@ -189,7 +174,6 @@ local function b64decode(data)
     end))
 end
 
--- primi obrađenu sliku, upiši u ox_inventory/web/images i daj item
 RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     local src = source
     if not config.addCommand then return end
@@ -199,18 +183,16 @@ RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     local png = b64decode(b64)
     SaveResourceFile('ox_inventory', ('web/images/%s.png'):format(name), png, -1)
 
-    -- zapamti lokalnu sliku u definiciji (za metadata.imageurl)
     if savedDefs[name] then
         savedDefs[name].image = ('nui://ox_inventory/web/images/%s.png'):format(name)
         persist()
         TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, savedDefs[name])
     end
 
-    giveClothing(src, name, 1) -- sad daj item (metadata ima sliku)
+    giveClothing(src, name, 1)
     TriggerClientEvent('qbx_core:client:captureDone', src, name)
 end)
 
--- ===== trajno čuvanje OBUČENE odjeće po igraču (metadata wornClothing) =====
 RegisterNetEvent('qbx_core:server:syncClothing', function(list)
     local src = source
     if type(list) ~= 'table' then return end

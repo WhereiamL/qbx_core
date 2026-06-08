@@ -1,4 +1,3 @@
-// Obrada slike odjeće: ukloni zelenu (chroma-key) -> obreži na sadržaj -> resize na NxN.
 window.addEventListener('message', (event) => {
     const d = event.data;
     if (!d || d.action !== 'process') return;
@@ -22,7 +21,7 @@ window.addEventListener('message', (event) => {
                 const i = (y * w + x) * 4;
                 const r = px[i], g = px[i + 1], b = px[i + 2];
                 if (g > gMin && g > r * ratio && g > b * ratio) {
-                    px[i + 3] = 0; // zelena -> providno
+                    px[i + 3] = 0;
                 } else {
                     if (x < minX) minX = x;
                     if (x > maxX) maxX = x;

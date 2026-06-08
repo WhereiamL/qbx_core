@@ -2,7 +2,6 @@ local playerState = LocalPlayer.state
 local prev = {}
 local shown = false
 
--- trend: 1 raste, -1 pada, 0 mirno
 local function trend(key, value)
     local p = prev[key]
     prev[key] = value
@@ -26,7 +25,7 @@ CreateThread(function()
         if show then
             shown = true
             local ped = cache.ped
-            -- GetPlayerSprintStaminaRemaining: 0 = puna, ~100 = iscrpljena -> obrni
+
             local stamina = 100.0 - math.min(100.0, GetPlayerSprintStaminaRemaining(cache.playerId))
             local hp = healthPct(ped)
             local armor = GetPedArmour(ped)

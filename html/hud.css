@@ -10,7 +10,6 @@ html, body {
 
 #hud { position: absolute; inset: 0; }
 
-/* ===== Zone 4: character status (dole-desno) ===== */
 .status-cluster {
     position: absolute;
     right: 1.6vw;
@@ -29,27 +28,23 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #9aa0a6;            /* default: sivo (ok) */
+    color: #9aa0a6;
     opacity: 0.35;
     transition: color .3s ease, opacity .3s ease, filter .3s ease;
 }
 .stat svg { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
 
-/* stanja po težini */
-.stat.warn     { color: #e8a13a; opacity: .85; }       /* amber */
-.stat.high     { color: #e0452f; opacity: 1; }          /* crveno */
-.stat.critical { color: #ff3b2f; opacity: 1; }          /* jako crveno */
+.stat.warn     { color: #e8a13a; opacity: .85; }
+.stat.high     { color: #e0452f; opacity: 1; }
+.stat.critical { color: #ff3b2f; opacity: 1; }
 .stat.critical svg { filter: drop-shadow(0 0 6px rgba(255,59,47,.8)); animation: pulse 1s ease-in-out infinite; }
 
-/* temperatura: hladno/vruće */
 .stat.cold { color: #4ab8e8; }
 .stat.hot  { color: #e0452f; }
 .stat.cold.critical svg { filter: drop-shadow(0 0 6px rgba(74,184,232,.9)); }
 
-/* sakrij potpuno kad je sasvim ok (osim alwaysShow) */
 .stat.hidden { opacity: 0; }
 
-/* kritični prsten oko ikone */
 .stat.ring::after {
     content: '';
     position: absolute;
@@ -59,7 +54,6 @@ html, body {
     opacity: .9;
 }
 
-/* trend strelice (chevroni) iznad ikone */
 .chevrons {
     position: absolute;
     top: -1.1vw;
@@ -82,7 +76,6 @@ html, body {
     50%      { opacity: .45; }
 }
 
-/* ===== Debuffi (dole-lijevo, samo kad aktivni) ===== */
 #debuffs {
     position: absolute;
     left: 1.6vw;
@@ -102,7 +95,6 @@ html, body {
 .debuff svg { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
 .debuff.wet { color: #4ab8e8; }
 
-/* ===== Zone 2: stamina (dole-lijevo) ===== */
 #stamina-wrap {
     position: absolute;
     left: 1.6vw;

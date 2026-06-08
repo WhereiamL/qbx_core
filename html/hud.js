@@ -1,6 +1,3 @@
-// DayZ-stil status HUD: ikone mijenjaju boju/intenzitet po težini, chevroni za trend,
-// blijede kad je stat ok (rješava "no hidden mode" iz analize dizajna).
-
 const ICONS = {
     health: '<svg viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>',
     armor: '<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 8.9-8 11-4.6-2.1-8-6-8-11V5z"/></svg>',
@@ -23,7 +20,6 @@ const STATS = [
     { key: 'radiation', icon: 'radiation', mode: 'rise' },
 ];
 
-// debuffi (samo on/off, vide se kad aktivni)
 const DEBUFF_ICONS = {
     bleeding: '<svg viewBox="0 0 24 24"><path d="M12 3c4.2 5.2 6.5 8.3 6.5 11.3A6.5 6.5 0 1 1 5.5 14.3C5.5 11.3 7.8 8.2 12 3z"/></svg>',
     disease: '<svg viewBox="0 0 24 24"><path d="M11 2h2v3.1a7 7 0 0 1 2.5 1l2.2-2.2 1.4 1.4-2.2 2.2a7 7 0 0 1 1 2.5H21v2h-3.1a7 7 0 0 1-1 2.5l2.2 2.2-1.4 1.4-2.2-2.2a7 7 0 0 1-2.5 1V21h-2v-3.1a7 7 0 0 1-2.5-1l-2.2 2.2-1.4-1.4 2.2-2.2a7 7 0 0 1-1-2.5H3v-2h3.1a7 7 0 0 1 1-2.5L4.9 6.3l1.4-1.4 2.2 2.2a7 7 0 0 1 2.5-1zm1 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>',
@@ -54,7 +50,7 @@ for (const s of STATS) {
 function severity(mode, v) {
     if (mode === 'deplete') return Math.min(1, Math.max(0, (100 - v) / 100));
     if (mode === 'rise') return Math.min(1, Math.max(0, v / 100));
-    // temp: komforno 40-60 = 0, dalje raste
+
     const d = Math.abs(v - 50);
     return d <= 10 ? 0 : Math.min(1, (d - 10) / 40);
 }
@@ -67,19 +63,15 @@ function applyStat(s, data) {
     const wrap = el.wrap;
     wrap.className = 'stat';
 
-    // vidljivost
     const hide = (s.onlyIfPositive && v <= 0) || (!s.alwaysShow && sev < 0.12);
     if (hide) { wrap.classList.add('hidden'); el.chev.classList.remove('show'); return; }
 
-    // stanja po težini
     if (sev >= 0.9) wrap.classList.add('critical', 'ring');
     else if (sev >= 0.7) wrap.classList.add('high');
     else if (sev >= 0.4) wrap.classList.add('warn');
 
-    // temperatura: hladno/vruće boja
     if (s.mode === 'temp' && sev > 0) wrap.classList.add(v < 50 ? 'cold' : 'hot');
 
-    // trend chevroni
     if (data.t === 1) { el.chev.className = 'chevrons show'; }
     else if (data.t === -1) { el.chev.className = 'chevrons show down'; }
     else { el.chev.classList.remove('show'); }

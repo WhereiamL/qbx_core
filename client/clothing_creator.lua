@@ -5,7 +5,6 @@ local function getGender()
     return IsPedModel(cache.ped, `mp_f_freemode_01`) and 'female' or 'male'
 end
 
--- tipovi odjeće za dropdown: label za prikaz, comps (komponente), value = prefiks imena
 local SLOT_TYPES = {
     { value = 'jakna',      label = 'Jakna',         comps = '11' },
     { value = 'majica',     label = 'Majica',        comps = '11' },
@@ -21,7 +20,6 @@ local SLOT_TYPES = {
     { value = 'outfit',     label = 'Cijeli outfit', comps = '11,4,6,8' },
 }
 
--- batch (cijeli outfit): koji slotovi se hvataju kao zasebni itemi
 local OUTFIT_SLOTS = {
     { type = 'component', id = 11, prefix = 'jakna',     label = 'Jakna' },
     { type = 'component', id = 8,  prefix = 'majica',    label = 'Majica' },
@@ -33,7 +31,7 @@ local OUTFIT_SLOTS = {
     { type = 'prop',      id = 0,  prefix = 'kapa',      label = 'Kapa' },
     { type = 'prop',      id = 1,  prefix = 'naocale',   label = 'Naočale' },
 }
-local OPTIONAL = { [1] = true, [5] = true, [9] = true } -- preskoči ako prazno (drawable 0)
+local OPTIONAL = { [1] = true, [5] = true, [9] = true }
 
 local function findType(value)
     for _, t in ipairs(SLOT_TYPES) do
@@ -41,7 +39,6 @@ local function findType(value)
     end
 end
 
--- parsiraj "11,4,p0" -> lista {type,id}
 local function parseSlots(str)
     local slots = {}
     for token in (str or ''):gmatch('[^,%s]+') do
@@ -56,7 +53,6 @@ local function parseSlots(str)
     return slots
 end
 
--- izgradi pieces iz trenutnog izgleda za date slotove
 local function buildPieces(slots, gender)
     local ped = cache.ped
     local pieces = {}
@@ -73,7 +69,6 @@ local function buildPieces(slots, gender)
     return pieces
 end
 
--- razlomi jedno-komadne targete na sve teksture (boje) tog drawable-a
 local function expandTextures(targets, gender)
     local out = {}
     for _, t in ipairs(targets) do
@@ -99,14 +94,12 @@ local function expandTextures(targets, gender)
     return out
 end
 
--- camera preset za frame slot
 local function frameInfo(slot)
     local cam = config.greenScreen.camera
     if slot.type == 'prop' then return cam.prop[slot.id] or cam.default end
     return cam.component[slot.id] or cam.default
 end
 
--- ===================== OBRADA SLIKE (NUI) =====================
 local nuiPromise
 RegisterNUICallback('clothingImageDone', function(data, cb)
     if data and data.name and data.image then
@@ -136,7 +129,6 @@ local function takeShot()
     return Citizen.Await(p)
 end
 
--- prikaži na klonu samo date komade (ostalo nevidljivo)
 local function isolateOnClone(clone, pieces, gender)
     for _, c in ipairs({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11 }) do SetPedComponentVariation(clone, c, -1, 0, 0) end
     for _, p in ipairs({ 0, 1, 2, 6, 7 }) do ClearPedProp(clone, p) end
@@ -152,8 +144,6 @@ local function isolateOnClone(clone, pieces, gender)
     end
 end
 
--- ===================== SCENA + SLIKANJE (batch) =====================
--- targets = { { name, label, pieces, slot = {type,id} }, ... }
 local function captureBatch(targets, gender)
     local gs = config.greenScreen
     if GetResourceState('screenshot-basic') ~= 'started' then
@@ -232,7 +222,6 @@ local function captureBatch(targets, gender)
     exports.qbx_core:Notify(('Gotovo — napravljeno %d komada'):format(done), 'success')
 end
 
--- ===================== /dodaj : meni + spremanje =====================
 RegisterCommand(config.addCommand, function()
     local typeOptions = {}
     for _, t in ipairs(SLOT_TYPES) do
@@ -263,7 +252,7 @@ RegisterCommand(config.addCommand, function()
 
     local targets = {}
     if slotType.value == 'outfit' and not override then
-        -- BATCH: svaki nošeni komad postaje zaseban item
+
         local ped = cache.ped
         for _, os in ipairs(OUTFIT_SLOTS) do
             local present = true
@@ -275,7 +264,7 @@ RegisterCommand(config.addCommand, function()
             if present then
                 local pieces = buildPieces({ { type = os.type, id = os.id } }, gender)
                 if #pieces > 0 then
-                    -- statovi se primjenjuju samo na gornji dio (jaknu); ostalo 0 (uredi po želji)
+
                     local pieceStats = (os.type == 'component' and os.id == 11) and stats or { warmth = 0, heatPenalty = 0, radProtection = 0 }
                     targets[#targets + 1] = { prefix = os.prefix, label = os.label, pieces = pieces, slot = { type = os.type, id = os.id }, stats = pieceStats }
                 end
@@ -283,7 +272,7 @@ RegisterCommand(config.addCommand, function()
         end
         if #targets == 0 then exports.qbx_core:Notify('Nema komada na sebi', 'error') return end
     else
-        -- JEDAN komad/def
+
         local label = (input[2] and input[2] ~= '' and input[2]) or slotType.label
         local compStr = override or slotType.comps
         local slots = parseSlots(compStr)
@@ -291,10 +280,8 @@ RegisterCommand(config.addCommand, function()
         targets[1] = { prefix = slotType.value, label = label, pieces = buildPieces(slots, gender), slot = slots[1], stats = stats }
     end
 
-    -- teksture (boje) kao zasebni itemi
     if input[7] then targets = expandTextures(targets, gender) end
 
-    -- kreiraj def za svaki -> jedinstveno ime; preskoči duplikate
     local valid, skipped = {}, 0
     for _, t in ipairs(targets) do
         local name, existed = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })

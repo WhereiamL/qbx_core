@@ -1,9 +1,7 @@
 local config = require 'config.clothing'
 
--- obučeni predmeti: [itemName] = { pieces = {...}, stats = {warmth,heatPenalty,radProtection} }
 local worn = {}
 
--- saberi statove svih obučenih komada i nahrani survival sisteme
 local function recomputeStats()
     local warmth, heat, rad = 0, 0, 0
     for _, w in pairs(worn) do
@@ -17,7 +15,6 @@ local function recomputeStats()
     exports.qbx_core:SetRadiationProtection(rad)
 end
 
--- definicije odjeće (config + data/clothing.json), dolaze sa servera
 local clothingDefs = {}
 local function fetchDefs()
     clothingDefs = lib.callback.await('qbx_core:getClothingDefs', false) or {}
@@ -56,7 +53,7 @@ end
 local function unequip(name, skipSync)
     local w = worn[name]
     if not w then return end
-    -- vrati slotove u prethodno stanje (obrnutim redom)
+
     for i = #w.pieces, 1, -1 do
         local p = w.pieces[i]
         applyValue(p.type, p.id, p.prev.drawable, p.prev.texture)
@@ -71,7 +68,6 @@ local function equip(name, skipSync, stats)
     if not def then return end
     local gender = getGender()
 
-    -- skini sve što već zauzima iste slotove (npr. druga jakna)
     for other, w in pairs(worn) do
         if other ~= name then
             for _, np in ipairs(def.pieces) do
@@ -93,7 +89,7 @@ local function equip(name, skipSync, stats)
             applyValue(piece.type, piece.id, v.drawable, v.texture)
         end
     end
-    -- efektivni statovi: metadata po komadu (loot) override-uje bazne iz definicije
+
     worn[name] = { pieces = pieces, stats = stats or def.stats }
     recomputeStats()
     if not skipSync then TriggerServerEvent('qbx_core:server:syncClothing', wornList()) end
@@ -103,8 +99,6 @@ local function toggle(name, stats)
     if worn[name] then unequip(name) else equip(name, false, stats) end
 end
 
--- ox_inventory: generički item 'clothing' (metadata.clothing = ime, metadata.stats = statovi)
--- ili imenovani item (data.name); client.export = 'qbx_core.equipClothing', consume = 0
 exports('equipClothing', function(data)
     if not data then return end
     local meta = data.metadata
@@ -112,18 +106,16 @@ exports('equipClothing', function(data)
     if name then toggle(name, meta and meta.stats) end
 end)
 
--- skini svu obučenu item-odjeću
 RegisterCommand(config.unequipCommand, function()
     for name in pairs(worn) do unequip(name, true) end
     TriggerServerEvent('qbx_core:server:syncClothing', {})
 end, false)
 
--- ponovo obuci sačuvano (poslije reapply-a osnovnog izgleda na loginu/restartu)
 RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     worn = {}
     if type(list) ~= 'table' then return end
     for _, entry in ipairs(list) do
-        -- podrška za stari format (samo string) i novi ({name, stats})
+
         if type(entry) == 'string' then
             equip(entry, true)
         elseif type(entry) == 'table' and entry.name then
@@ -133,8 +125,6 @@ RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     recomputeStats()
 end)
 
--- DEV alat: obuci se u illenium-u pa /outfitcapture <ime_itema> [id...] -> ispiše config-snippet
--- Bez id-eva ispiše sve komponente; sa id-evima samo te (npr. /outfitcapture jakna 11).
 if config.devCapture then
     RegisterCommand('outfitcapture', function(_, args)
         local name = args[1] or 'novi_item'
@@ -158,7 +148,7 @@ if config.devCapture then
                 pieces[#pieces + 1] = { type = 'prop', id = id, [gender] = { drawable = d, texture = GetPedPropTextureIndex(ped, id) } }
             end
         end
-        -- server spaja varijante (capture-uj isti item na M pa na Ž da imaš oba spola) i snima u json
+
         TriggerServerEvent('qbx_core:server:captureClothing', name, { label = name, pieces = pieces })
     end, false)
 
@@ -167,13 +157,11 @@ if config.devCapture then
     end)
 end
 
--- traži sačuvanu odjeću kad se igrač učita (illenium do tad postavi osnovni izgled)
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     fetchDefs()
     SetTimeout(2000, function() TriggerServerEvent('qbx_core:server:requestClothing') end)
 end)
 
--- restart resursa dok je igrač online
 AddEventHandler('onResourceStart', function(resource)
     if resource == GetCurrentResourceName() and QBX.IsLoggedIn then
         SetTimeout(2000, function() TriggerServerEvent('qbx_core:server:requestClothing') end)

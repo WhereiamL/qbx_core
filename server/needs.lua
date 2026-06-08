@@ -1,22 +1,17 @@
 local config = require 'config.survival'
 
----@param src number
----@param key string
----@param default number
 local function getStat(src, key, default)
     local v = Player(src).state[key]
     if v == nil then return default end
     return v
 end
 
----postavi survival stat (statebag, replicated) uz clamp
 local function setStat(src, key, value, min, max)
     value = math.max(min, math.min(max, value))
     Player(src).state:set(key, value, true)
     return value
 end
 
--- exporti (za druge resurse: vatra/kampfajer, lijekovi, zombi itd.)
 exports('GetTemperature', function(src) return getStat(src, 'temperature', config.temperature.default) end)
 exports('SetTemperature', function(src, v) return setStat(src, 'temperature', v, config.temperature.min, config.temperature.max) end)
 exports('AddTemperature', function(src, a)
@@ -33,7 +28,6 @@ exports('RemoveRadiation', function(src, a)
     return setStat(src, 'radiation', getStat(src, 'radiation', config.radiation.default) - a, config.radiation.min, config.radiation.max)
 end)
 
--- inicijalizacija pri ulasku
 RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
     local src = source
     setStat(src, 'temperature', config.temperature.default, config.temperature.min, config.temperature.max)
@@ -42,7 +36,6 @@ RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
     setStat(src, 'radiation', config.radiation.default, config.radiation.min, config.radiation.max)
 end)
 
--- TEMPERATURA: klijent javlja okolinu, server računa promjenu (server-authority na matematici)
 RegisterNetEvent('qbx_core:server:tempTick', function(env)
     if type(env) ~= 'table' then return end
     local src = source
@@ -56,11 +49,9 @@ RegisterNetEvent('qbx_core:server:tempTick', function(env)
     if env.water then delta -= t.waterDrop end
     if env.cold then delta -= t.snowDrop end
 
-    -- topla odjeća ublažava hladnoću
     local warmth = tonumber(env.warmth) or 0
     if delta < 0 and warmth > 0 then delta = math.min(0, delta + warmth) end
 
-    -- bez uticaja: vraćaj ka komforu
     if delta == 0 then
         local mid = (t.comfortMin + t.comfortMax) / 2
         if temp < mid then delta = math.min(t.baseRegen, mid - temp)
@@ -71,14 +62,12 @@ RegisterNetEvent('qbx_core:server:tempTick', function(env)
     setStat(src, 'temperature', temp + delta, t.min, t.max)
 end)
 
--- topli/hladni napici
 RegisterNetEvent('qbx_core:server:drinkTemp', function(kind)
     local src = source
     local a = kind == 'hot' and config.temperature.hotDrink or -config.temperature.coldDrink
     setStat(src, 'temperature', getStat(src, 'temperature', config.temperature.default) + a, config.temperature.min, config.temperature.max)
 end)
 
--- RADIJACIJA: klijent javlja zonu/zaštitu, server akumulira dozu (server-authority)
 RegisterNetEvent('qbx_core:server:radTick', function(data)
     if type(data) ~= 'table' then return end
     local src = source
@@ -95,14 +84,12 @@ RegisterNetEvent('qbx_core:server:radTick', function(data)
     setStat(src, 'radiation', rad + delta, r.min, r.max)
 end)
 
--- anti-rad lijek (ox_inventory item -> klijent export -> ovaj event)
 RegisterNetEvent('qbx_core:server:antiRad', function(amount)
     local src = source
     local a = tonumber(amount) or 25
     setStat(src, 'radiation', getStat(src, 'radiation', config.radiation.default) - a, config.radiation.min, config.radiation.max)
 end)
 
--- MJEHUR/CRIJEVA rastu kad piješ/jedeš (porast žeđi/gladi)
 local prevHunger, prevThirst = {}, {}
 
 AddStateBagChangeHandler('thirst', nil, function(bagName, _, value)
@@ -125,7 +112,6 @@ AddStateBagChangeHandler('hunger', nil, function(bagName, _, value)
     end
 end)
 
--- olakšanje (igrač) i auto-pražnjenje (sramota) -> mala šansa infekcije
 local function maybeInfect(src)
     if config.relieve.autoInfectionChance > 0
         and GetResourceState('qbx_medical') == 'started'
@@ -143,7 +129,6 @@ RegisterNetEvent('qbx_core:server:relieve', function(kind)
     end
 end)
 
--- server tick: vremenski prirast + auto-pražnjenje
 CreateThread(function()
     while true do
         Wait(config.tickInterval * 1000)
