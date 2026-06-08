@@ -95,7 +95,7 @@ end
 RegisterNetEvent('qbx_core:server:captureClothing', function(name, def)
     local src = source
     if not config.devCapture then return end
-    if not IsPlayerAceAllowed(src, 'group.admin') then return end
+    if config.adminOnly and not IsPlayerAceAllowed(src, 'group.admin') then return end
     if type(name) ~= 'string' or type(def) ~= 'table' or type(def.pieces) ~= 'table' then return end
 
     local merged = mergeDef(name, def)
@@ -145,7 +145,7 @@ end
 
 lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def)
     if not config.addCommand then return false end
-    if not IsPlayerAceAllowed(source, 'group.admin') then return false end
+    if config.adminOnly and not IsPlayerAceAllowed(source, 'group.admin') then return false end
     if type(def) ~= 'table' or type(def.pieces) ~= 'table' then return false end
 
     local dup = findDuplicate(def)
@@ -177,7 +177,7 @@ end
 RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     local src = source
     if not config.addCommand then return end
-    if not IsPlayerAceAllowed(src, 'group.admin') then return end
+    if config.adminOnly and not IsPlayerAceAllowed(src, 'group.admin') then return end
     if type(name) ~= 'string' or type(b64) ~= 'string' or b64 == '' then return end
 
     local png = b64decode(b64)

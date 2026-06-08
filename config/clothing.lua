@@ -2,6 +2,7 @@ return {
     unequipCommand = 'skini',
     devCapture = true,
     addCommand = 'dodaj',
+    adminOnly = false,
     genericItem = 'clothing',
 
     greenScreen = {
