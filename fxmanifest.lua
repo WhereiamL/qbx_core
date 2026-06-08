@@ -71,9 +71,8 @@ files {
     'config/clothing.lua',
     'html/index.html',
     'html/app.js',
-    'html/scripts/*.js',
-    'html/css/*.css',
-    'html/img/*',
+    'html/hud.js',
+    'html/hud.css',
     'locales/*.json'
 }
 

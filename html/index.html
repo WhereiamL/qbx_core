@@ -1,138 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="css/style.css" />
-    <title>FiveZ HUD</title>
-  </head>
-  <body>
-    <main>
-      <div class="status-container">
-        <div class="status-wrapper">
-          <div class="overweight-container">
-            <div class="overweight-wrapper">
-              <img class="status-export" id="overweight" src="img/overweight.svg" />
-            </div>
-          </div>
-          <div class="wetness-container">
-            <div class="wetness-wrapper">
-              <img class="status-export" id="wetness" src="img/wetness.png" />
-            </div>
-          </div>
-          <div class="illness-container">
-            <div class="illness-wrapper">
-              <img class="status-export" id="illness" src="img/illness.png" />
-            </div>
-          </div>
-          <div class="brokenbone-container">
-            <div class="brokenbone-wrapper">
-              <img class="status-export" id="brokenbone" src="img/brokenbone.png" />
-            </div>
-          </div>
-          <div class="digesting-container">
-            <div class="digesting-wrapper">
-              <img class="status-export" id="digesting" src="img/digesting.png" />
-            </div>
-          </div>
-          <div class="disease-container">
-            <div class="disease-wrapper">
-              <img class="status-export" id="disease" src="img/disease.png" />
-            </div>
-          </div>
-          <div class="bleeding-container">
-            <div class="bleeding-wrapper">
-              <img class="status-export" id="bleeding" src="img/bleeding.png" />
-            </div>
-          </div>
+<html lang="bs">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="hud.css" />
+  <title>FiveZ HUD</title>
+</head>
+<body>
+  <div id="hud">
+    <div id="debuffs"></div>
+    <div id="veh">
+      <div class="spd"><b>0</b><small>km/h</small></div>
+      <div class="fuel"><i></i></div>
+    </div>
+    <div id="stats"></div>
+  </div>
 
-          <div class="status-breaker" id="breaker"></div>
-
-          <div class="mic-container">
-            <div class="mic-wrapper">
-              <div class="mic-text">Whisper</div>
-              <img class="status-mic" src="img/microphone_off.png" />
-            </div>
-          </div>
-
-          <div class="water-container">
-            <div class="water-wrapper">
-              <img class="status-water top-arrow" id="water-top-arrow" src="img/arrow.svg" />
-              <img class="status-water" id="water-empty" src="img/water_empty.png" />
-              <img class="status-water" id="water-bar" src="img/water_full.png" />
-              <img class="status-water bottom-arrow" id="water-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-
-          <div class="food-container">
-            <div class="food-wrapper">
-              <img class="status-food top-arrow" id="food-top-arrow" src="img/arrow.svg" />
-              <img class="status-food" id="food-empty" src="img/food_empty.png" />
-              <img class="status-food" id="food-bar" src="img/food_full.png" />
-              <img class="status-food bottom-arrow" id="food-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-
-          <div class="temp-container">
-            <div class="temp-wrapper">
-              <img class="status-temp top-arrow" id="temp-top-arrow" src="img/arrow.svg" />
-              <img class="status-temp" id="temp-empty" src="img/temp_empty2.svg" />
-              <img class="status-temp" id="temp-bar" src="img/temp_full.svg" />
-              <img class="status-temp bottom-arrow" id="temp-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-
-          <div class="blood-container">
-            <div class="blood-wrapper">
-              <img class="status-blood top-arrow" id="blood-top-arrow" src="img/arrow.svg" />
-              <img class="status-blood" id="blood-empty" src="img/blood_empty.png" />
-              <img class="status-blood" id="blood-bar" src="img/blood_full.svg" />
-              <img class="status-blood bottom-arrow" id="blood-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-
-          <div class="armor-container">
-            <div class="armor-wrapper">
-              <img class="status-armor top-arrow" id="armor-top-arrow" src="img/arrow.svg" />
-              <img class="status-armor" id="armor-empty" src="img/armor_empty.svg" />
-              <img class="status-armor" id="armor-bar" src="img/armor_full.svg" />
-              <img class="status-armor bottom-arrow" id="armor-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-
-          <div class="health-container">
-            <div class="health-wrapper">
-              <img class="status-health top-arrow" id="health-top-arrow" src="img/arrow.svg" />
-              <img class="status-health" id="health-empty" src="img/hp_empty.png" />
-              <img class="status-health" id="health-bar" src="img/hp_full.png" />
-              <img class="status-health bottom-arrow" id="health-bottom-arrow" src="img/arrow.svg" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="stamina-container">
-        <div class="stamina-wrapper">
-          <svg class="stamina-icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M13 3a2 2 0 1 1-2 2 2 2 0 0 1 2-2zM7 8l5-1 4 3 3 1-.6 1.9-3.6-1.2-2 1.6 2.2 2.3L17 22h-2l-1.2-5-2.8-2-1.5 5.5-2-.5L11 13l-1.5-1-1.8 2.8-1.7-1L8.5 9z"/></svg>
-          <div class="progress-bar-stamina"><div class="inner-stamina-bar"></div></div>
-        </div>
-      </div>
-
-      <div class="vehicle-container">
-        <div class="vehicle-wrapper">
-          <div class="vehicle-speed">
-            <span class="speed-num">000</span>
-            <span class="speed-unit">KMH</span>
-          </div>
-          <div class="fuel-wrapper">
-            <svg class="fuel-icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 3h9a2 2 0 0 1 2 2v14h1a1 1 0 0 0 1-1v-6h-1V8l3 3v7a3 3 0 0 1-3 3h-1v-2H3zm2 2v6h7V5z"/></svg>
-            <div class="progress-bar-fuel"><div class="inner-fuel-bar"></div></div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <script src="scripts/main.js"></script>
-    <script src="app.js"></script>
-  </body>
+  <script src="hud.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>
