@@ -8,6 +8,8 @@ version '1.23.0'
 
 ox_lib 'locale'
 
+ui_page 'html/index.html'
+
 shared_scripts {
     '@ox_lib/init.lua',
     'modules/lib.lua',
@@ -22,6 +24,7 @@ client_scripts {
     'client/loops.lua',
     'client/needs.lua',
     'client/clothing.lua',
+    'client/clothing_creator.lua',
     'client/events.lua',
     'client/character.lua',
     'client/discord.lua',
@@ -65,6 +68,7 @@ files {
     'config/shared.lua',
     'config/survival.lua',
     'config/clothing.lua',
+    'html/*',
     'locales/*.json'
 }
 

@@ -94,7 +94,8 @@ local function mergeDef(name, def)
             existing.pieces[#existing.pieces + 1] = np
         end
     end
-    if def.radProtection then existing.radProtection = def.radProtection end
+    if def.stats then existing.stats = def.stats end
+    if def.label then existing.label = def.label end
     return existing
 end
 
@@ -109,6 +110,56 @@ RegisterNetEvent('qbx_core:server:captureClothing', function(name, def)
     persist()
     TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, merged) -- live svima
     giveClothing(src, name, 1) -- odmah daj nosivi item za test
+    TriggerClientEvent('qbx_core:client:captureDone', src, name)
+end)
+
+-- ===================== /dodaj : definicija + slika =====================
+-- snimi def (bez davanja itema; item se da nakon što slika stigne)
+RegisterNetEvent('qbx_core:server:saveClothingDef', function(name, def)
+    local src = source
+    if not config.addCommand then return end
+    if not IsPlayerAceAllowed(src, 'group.admin') then return end
+    if type(name) ~= 'string' or type(def) ~= 'table' or type(def.pieces) ~= 'table' then return end
+    local merged = mergeDef(name, def)
+    persist()
+    TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, merged)
+end)
+
+-- base64 dekoder (za PNG iz NUI canvasa)
+local B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local function b64decode(data)
+    data = data:gsub('[^' .. B64 .. '=]', '')
+    return (data:gsub('.', function(x)
+        if x == '=' then return '' end
+        local r, f = '', (B64:find(x) - 1)
+        for i = 6, 1, -1 do r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and '1' or '0') end
+        return r
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if #x ~= 8 then return '' end
+        local c = 0
+        for i = 1, 8 do c = c + (x:sub(i, i) == '1' and 2 ^ (8 - i) or 0) end
+        return string.char(c)
+    end))
+end
+
+-- primi obrađenu sliku, upiši u ox_inventory/web/images i daj item
+RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
+    local src = source
+    if not config.addCommand then return end
+    if not IsPlayerAceAllowed(src, 'group.admin') then return end
+    if type(name) ~= 'string' or type(b64) ~= 'string' or b64 == '' then return end
+
+    local png = b64decode(b64)
+    SaveResourceFile('ox_inventory', ('web/images/%s.png'):format(name), png, -1)
+
+    -- zapamti lokalnu sliku u definiciji (za metadata.imageurl)
+    if savedDefs[name] then
+        savedDefs[name].image = ('nui://ox_inventory/web/images/%s.png'):format(name)
+        persist()
+        TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, savedDefs[name])
+    end
+
+    giveClothing(src, name, 1) -- sad daj item (metadata ima sliku)
     TriggerClientEvent('qbx_core:client:captureDone', src, name)
 end)
 
