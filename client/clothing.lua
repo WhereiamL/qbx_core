@@ -136,6 +136,14 @@ if config.equip then
     end, false)
 end
 
+-- debug: odblokira ako se UI/kursor zabaguje
+RegisterCommand('fixcursor', function()
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+    SetFrontendActive(false)
+    ClearPedTasks(cache.ped)
+end, false)
+
 RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     worn = {}
     if type(list) ~= 'table' then return end
