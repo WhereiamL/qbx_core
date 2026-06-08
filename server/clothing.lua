@@ -199,7 +199,7 @@ RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     end
 
     if savedDefs[name] then
-        savedDefs[name].image = ('nui://%s/images/%s.png'):format(res, name)
+        savedDefs[name].image = ('https://cfx-nui-%s/images/%s.png'):format(res, name)
         persist()
         TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, savedDefs[name])
     end

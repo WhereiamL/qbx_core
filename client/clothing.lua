@@ -37,10 +37,15 @@ local function currentValue(piece)
 end
 
 local function applyValue(kind, id, drawable, texture)
+    local ped = cache.ped
     if kind == 'prop' then
-        exports['illenium-appearance']:setPedProp(cache.ped, { prop_id = id, drawable = drawable, texture = texture })
+        if drawable == -1 then
+            ClearPedProp(ped, id)
+        else
+            SetPedPropIndex(ped, id, drawable, texture, true)
+        end
     else
-        exports['illenium-appearance']:setPedComponent(cache.ped, { component_id = id, drawable = drawable, texture = texture })
+        SetPedComponentVariation(ped, id, drawable, texture or 0, 0)
     end
 end
 
