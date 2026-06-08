@@ -73,6 +73,32 @@ local function buildPieces(slots, gender)
     return pieces
 end
 
+-- razlomi jedno-komadne targete na sve teksture (boje) tog drawable-a
+local function expandTextures(targets, gender)
+    local out = {}
+    for _, t in ipairs(targets) do
+        local piece = #t.pieces == 1 and t.pieces[1] or nil
+        local v = piece and (piece[gender] or piece.male)
+        local n = 0
+        if v then
+            n = piece.type == 'prop'
+                and GetNumberOfPedPropTextureVariations(cache.ped, piece.id, v.drawable)
+                or GetNumberOfPedTextureVariations(cache.ped, piece.id, v.drawable)
+        end
+        if not v or n <= 1 then
+            out[#out + 1] = t
+        else
+            for tex = 0, n - 1 do
+                out[#out + 1] = {
+                    prefix = t.prefix, label = t.label, slot = t.slot, stats = t.stats,
+                    pieces = { { type = piece.type, id = piece.id, [gender] = { drawable = v.drawable, texture = tex } } },
+                }
+            end
+        end
+    end
+    return out
+end
+
 -- camera preset za frame slot
 local function frameInfo(slot)
     local cam = config.greenScreen.camera
@@ -220,6 +246,7 @@ RegisterCommand(config.addCommand, function()
         { type = 'number', label = 'Toplina', description = 'Grije na hladnoći (0 = ništa)', default = 0, min = 0 },
         { type = 'number', label = 'Pregrijavanje', description = 'Diže temp u vrućim zonama (0 = ništa)', default = 0, min = 0 },
         { type = 'slider', label = 'Zaštita od radijacije (%)', default = 0, min = 0, max = 100 },
+        { type = 'checkbox', label = 'Sve teksture (boje) kao zasebne iteme' },
     })
     if not input then return end
 
@@ -264,17 +291,25 @@ RegisterCommand(config.addCommand, function()
         targets[1] = { prefix = slotType.value, label = label, pieces = buildPieces(slots, gender), slot = slots[1], stats = stats }
     end
 
-    -- kreiraj def za svaki -> jedinstveno ime
-    local valid = {}
+    -- teksture (boje) kao zasebni itemi
+    if input[7] then targets = expandTextures(targets, gender) end
+
+    -- kreiraj def za svaki -> jedinstveno ime; preskoči duplikate
+    local valid, skipped = {}, 0
     for _, t in ipairs(targets) do
-        local name = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })
-        if name then
+        local name, existed = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })
+        if name and not existed then
             t.name = name
             valid[#valid + 1] = t
+        elseif existed then
+            skipped = skipped + 1
         end
     end
-    if #valid == 0 then exports.qbx_core:Notify('Nije moguće kreirati (dozvola?)', 'error') return end
 
-    exports.qbx_core:Notify(('Pravim slike za %d komada...'):format(#valid), 'inform')
+    if #valid == 0 then
+        exports.qbx_core:Notify(skipped > 0 and ('Sve već postoji (%d preskočeno)'):format(skipped) or 'Nije moguće kreirati (dozvola?)', 'inform')
+        return
+    end
+    exports.qbx_core:Notify(('Pravim slike za %d komada%s...'):format(#valid, skipped > 0 and (', %d preskočeno'):format(skipped) or ''), 'inform')
     captureBatch(valid, gender)
 end, false)

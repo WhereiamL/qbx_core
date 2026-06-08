@@ -123,16 +123,53 @@ local function uniqueName(prefix)
     return prefix .. '_' .. n
 end
 
--- kreiraj novu def, vrati dodijeljeno jedinstveno ime (item se da nakon slike)
+-- koji spol nosi ova def (po prvom komadu)
+local function defGender(def)
+    local p = def.pieces and def.pieces[1]
+    if not p then return nil end
+    if p.male then return 'male' elseif p.female then return 'female' end
+end
+
+-- potpis izgleda za dati spol (za provjeru duplikata)
+local function defSignature(def, gender)
+    local parts, has = {}, false
+    for _, p in ipairs(def.pieces or {}) do
+        local v = p[gender]
+        if v then
+            has = true
+            parts[#parts + 1] = ('%s:%s:%s:%s'):format(p.type, p.id, v.drawable, v.texture)
+        end
+    end
+    if not has then return nil end
+    table.sort(parts)
+    return table.concat(parts, '|')
+end
+
+-- nađi postojeću def s identičnim izgledom (da ne dupliramo)
+local function findDuplicate(def)
+    local gender = defGender(def)
+    if not gender then return nil end
+    local sig = defSignature(def, gender)
+    if not sig then return nil end
+    for name, ed in pairs(allDefs()) do
+        if defSignature(ed, gender) == sig then return name end
+    end
+end
+
+-- kreiraj novu def, vrati ime + da li je već postojala (item se da nakon slike)
 lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def)
     if not config.addCommand then return false end
     if not IsPlayerAceAllowed(source, 'group.admin') then return false end
     if type(def) ~= 'table' or type(def.pieces) ~= 'table' then return false end
+
+    local dup = findDuplicate(def)
+    if dup then return dup, true end -- već postoji isti izgled
+
     local name = uniqueName(prefix)
     savedDefs[name] = def
     persist()
     TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, def)
-    return name
+    return name, false
 end)
 
 -- base64 dekoder (za PNG iz NUI canvasa)
