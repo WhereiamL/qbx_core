@@ -109,14 +109,16 @@ RegisterNUICallback('clothingImageDone', function(data, cb)
     cb('ok')
 end)
 
-local function processImage(name, raw)
+local function processImage(name, raw, bg)
     nuiPromise = promise.new()
     SendNUIMessage({
         action = 'process',
         name = name,
         image = raw,
+        bg = bg,
         size = config.greenScreen.imageSize,
         chroma = config.greenScreen.chroma,
+        diffThreshold = config.greenScreen.diffThreshold or 38,
         resource = GetCurrentResourceName(),
     })
     Citizen.Await(nuiPromise)
@@ -147,10 +149,12 @@ end
 
 local function captureBatch(targets, gender)
     local gs = config.greenScreen
-    if GetResourceState(gs.screenshotResource or 'screenshot-basic') ~= 'started' then
-        exports.qbx_core:Notify((gs.screenshotResource or 'screenshot-basic') .. ' nije pokrenut — slika preskočena', 'error')
+    local res = gs.screenshotResource or 'screenshot-basic'
+    if GetResourceState(res) ~= 'started' then
+        exports.qbx_core:Notify(res .. ' nije pokrenut — slika preskočena', 'error')
         return
     end
+    local method = gs.method or 'diff'
 
     DoScreenFadeOut(400)
     Wait(450)
@@ -160,17 +164,20 @@ local function captureBatch(targets, gender)
     FreezeEntityPosition(cache.ped, true)
     SetEntityCoordsNoOffset(cache.ped, gs.hiddenSpot.x, gs.hiddenSpot.y, gs.hiddenSpot.z, false, false, false)
 
-    if not lib.requestModel(gs.model, 5000) then
-        SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)
-        FreezeEntityPosition(cache.ped, false)
-        DoScreenFadeIn(400)
-        exports.qbx_core:Notify('Green box model nije učitan (provjeri stream)', 'error')
-        return
+    local box, modelHash
+    if method == 'chroma' then
+        modelHash = joaat(gs.model)
+        if not IsModelValid(modelHash) or not lib.requestModel(gs.model, 5000) then
+            SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)
+            FreezeEntityPosition(cache.ped, false)
+            DoScreenFadeIn(400)
+            exports.qbx_core:Notify(('Model "%s" nije streaman — prebaci na method=diff'):format(gs.model), 'error')
+            return
+        end
+        box = CreateObject(modelHash, gs.position.x, gs.position.y, gs.position.z, false, false, false)
+        SetEntityHeading(box, gs.heading)
+        FreezeEntityPosition(box, true)
     end
-    local modelHash = joaat(gs.model)
-    local box = CreateObject(modelHash, gs.position.x, gs.position.y, gs.position.z, false, false, false)
-    SetEntityHeading(box, gs.heading)
-    FreezeEntityPosition(box, true)
 
     local clone = ClonePed(cache.ped, false, false, true)
     SetEntityCoordsNoOffset(clone, gs.position.x, gs.position.y, gs.position.z, false, false, false)
@@ -201,18 +208,25 @@ local function captureBatch(targets, gender)
 
         for _ = 1, 12 do HideHudAndRadarThisFrame() Wait(0) end
 
-        local raw = takeShot()
-        if raw then
-            processImage(tgt.name, raw)
-            done = done + 1
+        if method == 'diff' then
+            SetEntityVisible(clone, false, false)
+            for _ = 1, 6 do HideHudAndRadarThisFrame() Wait(0) end
+            local bg = takeShot()
+            SetEntityVisible(clone, true, false)
+            for _ = 1, 6 do HideHudAndRadarThisFrame() Wait(0) end
+            local fg = takeShot()
+            if fg and bg then processImage(tgt.name, fg, bg) done = done + 1 end
+        else
+            local raw = takeShot()
+            if raw then processImage(tgt.name, raw) done = done + 1 end
         end
     end
 
     RenderScriptCams(false, false, 0, true, false, 0)
     DestroyCam(cam, false)
     if DoesEntityExist(clone) then DeleteEntity(clone) end
-    if DoesEntityExist(box) then DeleteEntity(box) end
-    SetModelAsNoLongerNeeded(modelHash)
+    if box and DoesEntityExist(box) then DeleteEntity(box) end
+    if modelHash then SetModelAsNoLongerNeeded(modelHash) end
     NetworkClearClockTimeOverride()
 
     SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)

@@ -6,7 +6,9 @@ return {
     genericItem = 'clothing',
 
     greenScreen = {
-        model = 'jim_g_green_screen',
+        method = 'diff',            -- 'diff' = 2 slike (bez propa, radi svuda) | 'chroma' = zelena kutija (treba stream)
+        diffThreshold = 38,         -- osjetljivost izdvajanja (manje = vise hvata)
+        model = 'jim_g_green_screen', -- koristi se samo za 'chroma' metodu
         position = vec3(-1289.02, -3409.83, 20.91),
         hiddenSpot = vec3(-1224.22, -3349.63, 13.96),
         heading = 330.0,
