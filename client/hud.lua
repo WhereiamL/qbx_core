@@ -1,65 +1,99 @@
-local playerState = LocalPlayer.state
-local prev = {}
-local shown = false
+local HUD = {
+    mph = false,
+    useTemp = true,
+    useBlood = true,
+    thickIcons = false,
+    tick = 200,
+}
 
-local function trend(key, value)
-    local p = prev[key]
-    prev[key] = value
-    if p == nil then return 0 end
-    if value > p + 0.3 then return 1 elseif value < p - 0.3 then return -1 end
-    return 0
+local ps = LocalPlayer.state
+local hudOn = true
+local started = false
+
+local function sendLoaded()
+    SendNUIMessage({
+        action = 'loaded',
+        speedUnit = HUD.mph,
+        useTemp = HUD.useTemp,
+        useBlood = HUD.useBlood,
+        useThickIcons = HUD.thickIcons,
+    })
 end
 
 local function healthPct(ped)
     local max = GetEntityMaxHealth(ped)
-    local hp = GetEntityHealth(ped)
     local base = max > 100 and 100 or 0
     if max <= base then return 0 end
-    return math.max(0, math.min(100, math.floor((hp - base) / (max - base) * 100 + 0.5)))
+    return math.max(0, math.min(100, math.floor((GetEntityHealth(ped) - base) / (max - base) * 100 + 0.5)))
 end
 
-CreateThread(function()
-    while true do
-        Wait(300)
-        local show = QBX.IsLoggedIn and not playerState.isDead and not IsPauseMenuActive()
-        if show then
-            shown = true
+local function voiceLevel()
+    local prox = MumbleGetTalkerProximity()
+    if prox <= 3.0 then return 1.5 elseif prox <= 8.0 then return 3.0 else return 6.0 end
+end
+
+RegisterCommand('hud', function()
+    hudOn = not hudOn
+    SendNUIMessage({ action = 'hudVisibility', showHud = hudOn })
+end, false)
+
+local function startHud()
+    if started then return end
+    started = true
+    sendLoaded()
+
+    CreateThread(function()
+        while true do
+            Wait(HUD.tick)
+            if not ps.isLoggedIn then goto continue end
+
+            if ps.isDead then
+                SendNUIMessage({ action = 'hudVisibility', showHud = false })
+                goto continue
+            elseif hudOn then
+                SendNUIMessage({ action = 'hudVisibility', showHud = true })
+            else
+                goto continue
+            end
+
             local ped = cache.ped
 
-            local stamina = 100.0 - math.min(100.0, GetPlayerSprintStaminaRemaining(cache.playerId))
-            local hp = healthPct(ped)
-            local armor = GetPedArmour(ped)
-            local hunger = playerState.hunger or 100
-            local thirst = playerState.thirst or 100
-            local temp = playerState.temperature or 50
-            local bladder = playerState.bladder or 0
-            local bowel = playerState.bowel or 0
-            local rad = playerState.radiation or 0
+            local veh = cache.vehicle
+            if veh then
+                local mult = HUD.mph and 2.236702 or 3.6
+                local fuel = Entity(veh).state.fuel or GetVehicleFuelLevel(veh)
+                SendNUIMessage({ action = 'inVehicle', speed = GetEntitySpeed(veh) * mult, fuel = fuel or 0 })
+            else
+                SendNUIMessage({ action = 'noVehicle', stamina = 100.0 - math.min(100.0, GetPlayerSprintStaminaRemaining(cache.playerId)) })
+            end
 
             SendNUIMessage({
-                action = 'hud',
-                show = true,
-                stats = {
-                    health = { v = hp, t = trend('health', hp) },
-                    armor = { v = armor, t = trend('armor', armor) },
-                    hunger = { v = hunger, t = trend('hunger', hunger) },
-                    thirst = { v = thirst, t = trend('thirst', thirst) },
-                    temperature = { v = temp, t = trend('temperature', temp) },
-                    bladder = { v = bladder, t = trend('bladder', bladder) },
-                    bowel = { v = bowel, t = trend('bowel', bowel) },
-                    radiation = { v = rad, t = trend('radiation', rad) },
-                    stamina = { v = stamina, t = 0 },
-                },
-                debuffs = {
-                    bleeding = (playerState['qbx_medical:bleedLevel'] or 0) > 0,
-                    disease = (playerState['qbx_medical:infection'] or 0) > 0,
-                    brokenBone = playerState['qbx_medical:hasFracture'] == true,
-                    wetness = playerState.wet == true,
-                },
+                action = 'onFoot',
+                health = healthPct(ped),
+                armor = GetPedArmour(ped),
+                hunger = ps.hunger or 100,
+                water = ps.thirst or 100,
+                temp = ps.temperature or 50,
+                blood = ps['qbx_medical:blood'] or 100,
+                voice = voiceLevel(),
+                talking = NetworkIsPlayerTalking(PlayerId()),
+                wetness = ps.wet == true,
+                bleeding = (ps['qbx_medical:bleedLevel'] or 0) > 0,
+                disease = (ps['qbx_medical:infection'] or 0) > 0,
+                illness = (ps.radiation or 0) >= 40,
+                brokenbone = ps['qbx_medical:hasFracture'] == true,
+                digestion = (ps.bowel or 0) >= 80 or (ps.bladder or 0) >= 80,
+                overweight = false,
             })
-        elseif shown then
-            shown = false
-            SendNUIMessage({ action = 'hud', show = false })
+
+            ::continue::
         end
-    end
+    end)
+end
+
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', startHud)
+
+AddEventHandler('onResourceStart', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    if LocalPlayer.state.isLoggedIn then startHud() end
 end)

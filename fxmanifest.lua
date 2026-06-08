@@ -69,7 +69,11 @@ files {
     'config/shared.lua',
     'config/survival.lua',
     'config/clothing.lua',
-    'html/*',
+    'html/index.html',
+    'html/app.js',
+    'html/scripts/*.js',
+    'html/css/*.css',
+    'html/img/*',
     'locales/*.json'
 }
 
