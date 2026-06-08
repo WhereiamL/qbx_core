@@ -114,9 +114,10 @@ end)
 
 local function maybeInfect(src)
     if config.relieve.autoInfectionChance > 0
-        and GetResourceState('qbx_medical') == 'started'
+        and GetResourceState('fivez_injuries') == 'started'
         and math.random(100) <= config.relieve.autoInfectionChance then
-        exports.qbx_medical:AddInfection(src, 5)
+        local ok, fn = pcall(function() return exports.fivez_injuries.AddInfection end)
+        if ok and fn then exports.fivez_injuries:AddInfection(src, 'lower_body', 5) end
     end
 end
 
