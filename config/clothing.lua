@@ -7,6 +7,7 @@
 --   se za muški/ženski model — dolje su PRIMJERI, prilagodi svom serveru.
 return {
     unequipCommand = 'skini', -- komanda za skidanje sve obučene item-odjeće
+    devCapture = true,        -- DEV: /outfitcapture ispisuje config-snippet trenutnog izgleda (isključi na produkciji)
 
     items = {
         ['jacket_black'] = {

@@ -97,6 +97,39 @@ RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     end
 end)
 
+-- DEV alat: obuci se u illenium-u pa /outfitcapture <ime_itema> [id...] -> ispiše config-snippet
+-- Bez id-eva ispiše sve komponente; sa id-evima samo te (npr. /outfitcapture jakna 11).
+if config.devCapture then
+    RegisterCommand('outfitcapture', function(_, args)
+        local name = args[1] or 'novi_item'
+        local ped = cache.ped
+        local gender = getGender()
+        local wantComponents = { 1, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
+        if args[2] then
+            wantComponents = {}
+            for i = 2, #args do wantComponents[#wantComponents + 1] = tonumber(args[i]) end
+        end
+
+        local out = { ("['%s'] = {"):format(name), ("    label = '%s',"):format(name), '    pieces = {' }
+        for _, id in ipairs(wantComponents) do
+            if id then
+                local d, t = GetPedDrawableVariation(ped, id), GetPedTextureVariation(ped, id)
+                out[#out + 1] = ("        { type = 'component', id = %d, %s = { drawable = %d, texture = %d } },"):format(id, gender, d, t)
+            end
+        end
+        for _, id in ipairs({ 0, 1, 2, 6, 7 }) do
+            local d = GetPedPropIndex(ped, id)
+            if d ~= -1 then
+                out[#out + 1] = ("        { type = 'prop', id = %d, %s = { drawable = %d, texture = %d } },"):format(id, gender, d, GetPedPropTextureIndex(ped, id))
+            end
+        end
+        out[#out + 1] = '    },'
+        out[#out + 1] = '},'
+        print('\n[outfitcapture] (' .. gender .. ') — kopiraj u config/clothing.lua:\n' .. table.concat(out, '\n') .. '\n')
+        exports.qbx_core:Notify('Snippet ispisan u F8 konzoli', 'success')
+    end, false)
+end
+
 -- traži sačuvanu odjeću kad se igrač učita (illenium do tad postavi osnovni izgled)
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     SetTimeout(2000, function() TriggerServerEvent('qbx_core:server:requestClothing') end)
