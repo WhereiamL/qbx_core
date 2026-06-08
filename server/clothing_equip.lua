@@ -59,26 +59,31 @@ exports.ox_inventory:registerHook('swapItems', function(payload)
     if not toCloth and not fromCloth then return true end
 
     local src = payload.source
-    local moving = payload.fromSlot
+    local moving = type(payload.fromSlot) == 'table' and payload.fromSlot or nil
+    local nm = moving and moving.name
+    local defName = moving and moving.metadata and moving.metadata.clothing
+
+    if config.equip.debug then
+        print(('[clothing] swap from=%s to=%s name=%s def=%s toSlot=%s'):format(
+            tostring(payload.fromInventory), tostring(payload.toInventory), tostring(nm), tostring(defName), tostring(payload.toSlot)))
+    end
 
     if toCloth then
-        if not moving or moving.name ~= config.genericItem then return false end
-        local defName = moving.metadata and moving.metadata.clothing
-        local def = defName and exports.qbx_core:GetClothingDef(defName)
-        if not def then return false end
-        if config.equip.strict then
-            local idx = type(payload.toSlot) == 'number' and payload.toSlot or (type(payload.toSlot) == 'table' and payload.toSlot.slot)
-            if idx and not defMatchesSlot(def, idx) then
-                TriggerClientEvent('qbx_core:client:clothNotify', src, 'Pogrešan slot za ovaj komad')
-                return false
+        if nm == config.genericItem and defName then
+            if config.equip.strict then
+                local def = exports.qbx_core:GetClothingDef(defName)
+                local idx = type(payload.toSlot) == 'number' and payload.toSlot or (type(payload.toSlot) == 'table' and payload.toSlot.slot)
+                if def and idx and not defMatchesSlot(def, idx) then
+                    TriggerClientEvent('qbx_core:client:clothNotify', src, 'Pogrešan slot za ovaj komad')
+                    return false
+                end
             end
+            TriggerClientEvent('qbx_core:client:equipDef', src, defName)
         end
-        TriggerClientEvent('qbx_core:client:equipDef', src, defName)
         return true
     end
 
     if fromCloth then
-        local defName = moving and moving.metadata and moving.metadata.clothing
         if defName then TriggerClientEvent('qbx_core:client:unequipDef', src, defName) end
         return true
     end

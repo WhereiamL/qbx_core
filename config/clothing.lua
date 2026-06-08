@@ -9,6 +9,7 @@ return {
     equip = {
         command = 'odjeca',
         strict = false, -- Faza 1: prihvati bilo koji slot; Faza 2 (paperdoll) -> true
+        debug = true,   -- print swap payload u server konzolu (za dijagnostiku)
         slots = {
             { label = 'Jakna',     type = 'component', id = 11 },
             { label = 'Majica',    type = 'component', id = 8 },
