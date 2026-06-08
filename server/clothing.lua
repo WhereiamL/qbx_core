@@ -114,15 +114,25 @@ RegisterNetEvent('qbx_core:server:captureClothing', function(name, def)
 end)
 
 -- ===================== /dodaj : definicija + slika =====================
--- snimi def (bez davanja itema; item se da nakon što slika stigne)
-RegisterNetEvent('qbx_core:server:saveClothingDef', function(name, def)
-    local src = source
-    if not config.addCommand then return end
-    if not IsPlayerAceAllowed(src, 'group.admin') then return end
-    if type(name) ~= 'string' or type(def) ~= 'table' or type(def.pieces) ~= 'table' then return end
-    local merged = mergeDef(name, def)
+-- generiši jedinstveno ime iz prefiksa (jakna_1, jakna_2, ...)
+local function uniqueName(prefix)
+    prefix = (tostring(prefix or 'item'):lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
+    if prefix == '' then prefix = 'item' end
+    local n = 1
+    while savedDefs[prefix .. '_' .. n] or config.items[prefix .. '_' .. n] do n = n + 1 end
+    return prefix .. '_' .. n
+end
+
+-- kreiraj novu def, vrati dodijeljeno jedinstveno ime (item se da nakon slike)
+lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def)
+    if not config.addCommand then return false end
+    if not IsPlayerAceAllowed(source, 'group.admin') then return false end
+    if type(def) ~= 'table' or type(def.pieces) ~= 'table' then return false end
+    local name = uniqueName(prefix)
+    savedDefs[name] = def
     persist()
-    TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, merged)
+    TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, def)
+    return name
 end)
 
 -- base64 dekoder (za PNG iz NUI canvasa)

@@ -5,9 +5,26 @@ local function getGender()
     return IsPedModel(cache.ped, `mp_f_freemode_01`) and 'female' or 'male'
 end
 
--- napravi filename/def-safe ime
-local function sanitize(name)
-    return (name:lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
+-- tipovi odjeće za dropdown: label za prikaz, comps (komponente), value = prefiks imena
+local SLOT_TYPES = {
+    { value = 'jakna',      label = 'Jakna',         comps = '11' },
+    { value = 'majica',     label = 'Majica',        comps = '11' },
+    { value = 'undershirt', label = 'Majica ispod',  comps = '8' },
+    { value = 'pantalone',  label = 'Pantalone',     comps = '4' },
+    { value = 'obuca',      label = 'Obuća',         comps = '6' },
+    { value = 'maska',      label = 'Maska',         comps = '1' },
+    { value = 'kapa',       label = 'Kapa/Šešir',    comps = 'p0' },
+    { value = 'naocale',    label = 'Naočale',       comps = 'p1' },
+    { value = 'pancir',     label = 'Pancir/Prsluk', comps = '9' },
+    { value = 'torba',      label = 'Torba/Ranac',   comps = '5' },
+    { value = 'rukavice',   label = 'Rukavice',      comps = '3' },
+    { value = 'outfit',     label = 'Cijeli outfit', comps = '11,4,6,8' },
+}
+
+local function findType(value)
+    for _, t in ipairs(SLOT_TYPES) do
+        if t.value == value then return t end
+    end
 end
 
 -- parsiraj "11,4,p0" -> lista {type,id}
@@ -160,30 +177,41 @@ end)
 
 -- ===================== /dodaj : meni + spremanje =====================
 RegisterCommand(config.addCommand, function()
+    local typeOptions = {}
+    for _, t in ipairs(SLOT_TYPES) do
+        typeOptions[#typeOptions + 1] = { value = t.value, label = t.label }
+    end
+
     local input = lib.inputDialog('Dodaj odjeću', {
-        { type = 'input',  label = 'Naziv',          description = 'Jedinstveno ime (mala slova/_)', required = true },
-        { type = 'input',  label = 'Komponente',     description = 'npr. 11 (jakna), 11,4,6 (outfit), p0 (kapa)', default = '11', required = true },
-        { type = 'number', label = 'Toplina',        description = 'Grije na hladnoći (0 = ništa)', default = 0, min = 0 },
-        { type = 'number', label = 'Pregrijavanje',  description = 'Diže temp u vrućim zonama (0 = ništa)', default = 0, min = 0 },
+        { type = 'select', label = 'Tip odjeće', options = typeOptions, default = 'jakna', required = true },
+        { type = 'input',  label = 'Naziv (prikaz)', description = 'Prazno = koristi tip (npr. Jakna). Ime fajla je ionako jedinstveno.' },
+        { type = 'input',  label = 'Komponente (napredno)', description = 'Override, npr. 11,4,6 ili p0. Prazno = po tipu' },
+        { type = 'number', label = 'Toplina', description = 'Grije na hladnoći (0 = ništa)', default = 0, min = 0 },
+        { type = 'number', label = 'Pregrijavanje', description = 'Diže temp u vrućim zonama (0 = ništa)', default = 0, min = 0 },
         { type = 'slider', label = 'Zaštita od radijacije (%)', default = 0, min = 0, max = 100 },
     })
     if not input then return end
 
-    local name = sanitize(input[1])
-    if name == '' then exports.qbx_core:Notify('Neispravan naziv', 'error') return end
-    local gender = getGender()
-    local slots = parseSlots(input[2])
-    if #slots == 0 then exports.qbx_core:Notify('Nisi naveo komponente', 'error') return end
+    local slotType = findType(input[1])
+    if not slotType then exports.qbx_core:Notify('Izaberi tip odjeće', 'error') return end
 
+    local label = (input[2] and input[2] ~= '' and input[2]) or slotType.label
+    local compStr = (input[3] and input[3] ~= '' and input[3]) or slotType.comps
+    local slots = parseSlots(compStr)
+    if #slots == 0 then exports.qbx_core:Notify('Neispravne komponente', 'error') return end
+
+    local gender = getGender()
     local pieces = buildPieces(slots, gender)
     local stats = {
-        warmth = input[3] or 0,
-        heatPenalty = input[4] or 0,
-        radProtection = (input[5] or 0) / 100,
+        warmth = input[4] or 0,
+        heatPenalty = input[5] or 0,
+        radProtection = (input[6] or 0) / 100,
     }
 
-    -- snimi definiciju (bez davanja itema — item se da nakon slike)
-    TriggerServerEvent('qbx_core:server:saveClothingDef', name, { label = input[1], pieces = pieces, stats = stats })
+    -- server dodjeljuje jedinstveno ime (jakna_1, jakna_2, ...) i vraća ga
+    local name = lib.callback.await('qbx_core:createClothingDef', false, slotType.value, { label = label, pieces = pieces, stats = stats })
+    if not name then exports.qbx_core:Notify('Nije moguće kreirati (dozvola?)', 'error') return end
+
     exports.qbx_core:Notify(('Pravim sliku za "%s" (%s)...'):format(name, gender), 'inform')
     generateImage(name, slots)
 end, false)
