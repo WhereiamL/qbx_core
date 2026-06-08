@@ -21,6 +21,20 @@ local SLOT_TYPES = {
     { value = 'outfit',     label = 'Cijeli outfit', comps = '11,4,6,8' },
 }
 
+-- batch (cijeli outfit): koji slotovi se hvataju kao zasebni itemi
+local OUTFIT_SLOTS = {
+    { type = 'component', id = 11, prefix = 'jakna',     label = 'Jakna' },
+    { type = 'component', id = 8,  prefix = 'majica',    label = 'Majica' },
+    { type = 'component', id = 4,  prefix = 'pantalone', label = 'Pantalone' },
+    { type = 'component', id = 6,  prefix = 'obuca',     label = 'Obuća' },
+    { type = 'component', id = 1,  prefix = 'maska',     label = 'Maska' },
+    { type = 'component', id = 9,  prefix = 'pancir',    label = 'Pancir' },
+    { type = 'component', id = 5,  prefix = 'torba',     label = 'Torba' },
+    { type = 'prop',      id = 0,  prefix = 'kapa',      label = 'Kapa' },
+    { type = 'prop',      id = 1,  prefix = 'naocale',   label = 'Naočale' },
+}
+local OPTIONAL = { [1] = true, [5] = true, [9] = true } -- preskoči ako prazno (drawable 0)
+
 local function findType(value)
     for _, t in ipairs(SLOT_TYPES) do
         if t.value == value then return t end
@@ -59,31 +73,71 @@ local function buildPieces(slots, gender)
     return pieces
 end
 
--- camera preset za prvi (frame) slot
+-- camera preset za frame slot
 local function frameInfo(slot)
     local cam = config.greenScreen.camera
     if slot.type == 'prop' then return cam.prop[slot.id] or cam.default end
     return cam.component[slot.id] or cam.default
 end
 
--- ============== GENERATOR SLIKE (greenscreen + screenshot-basic) ==============
-local function generateImage(name, slots)
+-- ===================== OBRADA SLIKE (NUI) =====================
+local nuiPromise
+RegisterNUICallback('clothingImageDone', function(data, cb)
+    if data and data.name and data.image then
+        TriggerServerEvent('qbx_core:server:saveClothingImage', data.name, data.image)
+    end
+    if nuiPromise then nuiPromise:resolve(true) end
+    cb('ok')
+end)
+
+local function processImage(name, raw)
+    nuiPromise = promise.new()
+    SendNUIMessage({
+        action = 'process',
+        name = name,
+        image = raw,
+        size = config.greenScreen.imageSize,
+        chroma = config.greenScreen.chroma,
+        resource = GetCurrentResourceName(),
+    })
+    Citizen.Await(nuiPromise)
+    nuiPromise = nil
+end
+
+local function takeShot()
+    local p = promise.new()
+    exports['screenshot-basic']:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data) p:resolve(data) end)
+    return Citizen.Await(p)
+end
+
+-- prikaži na klonu samo date komade (ostalo nevidljivo)
+local function isolateOnClone(clone, pieces, gender)
+    for _, c in ipairs({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11 }) do SetPedComponentVariation(clone, c, -1, 0, 0) end
+    for _, p in ipairs({ 0, 1, 2, 6, 7 }) do ClearPedProp(clone, p) end
+    for _, piece in ipairs(pieces) do
+        local v = piece[gender] or piece.male
+        if v then
+            if piece.type == 'prop' then
+                SetPedPropIndex(clone, piece.id, v.drawable, v.texture, true)
+            else
+                SetPedComponentVariation(clone, piece.id, v.drawable, v.texture, 0)
+            end
+        end
+    end
+end
+
+-- ===================== SCENA + SLIKANJE (batch) =====================
+-- targets = { { name, label, pieces, slot = {type,id} }, ... }
+local function captureBatch(targets, gender)
     local gs = config.greenScreen
     if GetResourceState('screenshot-basic') ~= 'started' then
         exports.qbx_core:Notify('screenshot-basic nije pokrenut — slika preskočena', 'error')
         return
     end
 
-    local info = frameInfo(slots[1])
-    local capturedComp, capturedProp = {}, {}
-    for _, s in ipairs(slots) do
-        if s.type == 'prop' then capturedProp[s.id] = true else capturedComp[s.id] = true end
-    end
-
     DoScreenFadeOut(400)
     Wait(450)
 
-    -- skloni igrača da klon može renderovati
     local backCoords = GetEntityCoords(cache.ped)
     local backHeading = GetEntityHeading(cache.ped)
     FreezeEntityPosition(cache.ped, true)
@@ -101,79 +155,56 @@ local function generateImage(name, slots)
     SetEntityHeading(box, gs.heading)
     FreezeEntityPosition(box, true)
 
-    -- klon nosi trenutni izgled; sakrij sve osim uhvaćenih komada
     local clone = ClonePed(cache.ped, false, false, true)
     SetEntityCoordsNoOffset(clone, gs.position.x, gs.position.y, gs.position.z, false, false, false)
-    for _, c in ipairs({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11 }) do
-        if not capturedComp[c] then SetPedComponentVariation(clone, c, -1, 0, 0) end
-    end
-    for _, p in ipairs({ 0, 1, 2, 6, 7 }) do
-        if not capturedProp[p] then ClearPedProp(clone, p) end
-    end
-    SetEntityRotation(clone, 0.0, 0.0, info.rz, 2, false)
     FreezeEntityPosition(clone, true)
     SetEntityInvincible(clone, true)
     SetEntityCollision(clone, false, false)
 
-    -- konzistentno svjetlo
     NetworkOverrideClockTime(12, 0, 0)
     RequestCollisionAtCoord(gs.position.x, gs.position.y, gs.position.z)
     Wait(300)
 
-    -- kamera: 1.2m ispred peda (replika fivem-greenscreener)
-    local coords = GetEntityCoords(clone)
-    local fwd = GetEntityForwardVector(clone)
-    local dist = gs.camDistance
-    local cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA',
-        coords.x + fwd.x * dist, coords.y + fwd.y * dist, coords.z + fwd.z + info.zPos,
-        0.0, 0.0, 0.0, info.fov, true, 0)
-    PointCamAtCoord(cam, coords.x, coords.y, coords.z + info.zPos)
+    local cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, true, 0)
     SetCamActive(cam, true)
     RenderScriptCams(true, false, 0, true, false, 0)
 
-    -- sakrij HUD nekoliko frejmova pa slikaj
-    for _ = 1, 30 do
-        HideHudAndRadarThisFrame()
-        Wait(0)
-    end
+    local done = 0
+    for _, tgt in ipairs(targets) do
+        local info = frameInfo(tgt.slot)
+        isolateOnClone(clone, tgt.pieces, gender)
+        SetEntityRotation(clone, 0.0, 0.0, info.rz, 2, false)
+        Wait(60)
 
-    exports['screenshot-basic']:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data)
-        -- cleanup
-        RenderScriptCams(false, false, 0, true, false, 0)
-        DestroyCam(cam, false)
-        if DoesEntityExist(clone) then DeleteEntity(clone) end
-        if DoesEntityExist(box) then DeleteEntity(box) end
-        SetModelAsNoLongerNeeded(modelHash)
-        NetworkClearClockTimeOverride()
+        local coords = GetEntityCoords(clone)
+        local fwd = GetEntityForwardVector(clone)
+        SetCamCoord(cam, coords.x + fwd.x * gs.camDistance, coords.y + fwd.y * gs.camDistance, coords.z + fwd.z + info.zPos)
+        PointCamAtCoord(cam, coords.x, coords.y, coords.z + info.zPos)
+        SetCamFov(cam, info.fov)
 
-        SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)
-        SetEntityHeading(cache.ped, backHeading)
-        FreezeEntityPosition(cache.ped, false)
-        DoScreenFadeIn(500)
+        for _ = 1, 12 do HideHudAndRadarThisFrame() Wait(0) end
 
-        if data then
-            SendNUIMessage({
-                action = 'process',
-                name = name,
-                image = data,
-                size = gs.imageSize,
-                chroma = gs.chroma,
-                resource = GetCurrentResourceName(),
-            })
-        else
-            exports.qbx_core:Notify('Screenshot nije uspio', 'error')
+        local raw = takeShot()
+        if raw then
+            processImage(tgt.name, raw)
+            done = done + 1
         end
-    end)
-end
-
--- NUI vrati obrađenu (chroma-key + crop + resize) sliku
-RegisterNUICallback('clothingImageDone', function(data, cb)
-    if data and data.name and data.image then
-        TriggerServerEvent('qbx_core:server:saveClothingImage', data.name, data.image)
-        exports.qbx_core:Notify(('Slika "%s" sačuvana u ox_inventory'):format(data.name), 'success')
     end
-    cb('ok')
-end)
+
+    RenderScriptCams(false, false, 0, true, false, 0)
+    DestroyCam(cam, false)
+    if DoesEntityExist(clone) then DeleteEntity(clone) end
+    if DoesEntityExist(box) then DeleteEntity(box) end
+    SetModelAsNoLongerNeeded(modelHash)
+    NetworkClearClockTimeOverride()
+
+    SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)
+    SetEntityHeading(cache.ped, backHeading)
+    FreezeEntityPosition(cache.ped, false)
+    DoScreenFadeIn(500)
+
+    exports.qbx_core:Notify(('Gotovo — napravljeno %d komada'):format(done), 'success')
+end
 
 -- ===================== /dodaj : meni + spremanje =====================
 RegisterCommand(config.addCommand, function()
@@ -184,7 +215,7 @@ RegisterCommand(config.addCommand, function()
 
     local input = lib.inputDialog('Dodaj odjeću', {
         { type = 'select', label = 'Tip odjeće', options = typeOptions, default = 'jakna', required = true },
-        { type = 'input',  label = 'Naziv (prikaz)', description = 'Prazno = koristi tip (npr. Jakna). Ime fajla je ionako jedinstveno.' },
+        { type = 'input',  label = 'Naziv (prikaz)', description = 'Prazno = koristi tip. Kod outfita se ignoriše (svaki komad svoj naziv).' },
         { type = 'input',  label = 'Komponente (napredno)', description = 'Override, npr. 11,4,6 ili p0. Prazno = po tipu' },
         { type = 'number', label = 'Toplina', description = 'Grije na hladnoći (0 = ništa)', default = 0, min = 0 },
         { type = 'number', label = 'Pregrijavanje', description = 'Diže temp u vrućim zonama (0 = ništa)', default = 0, min = 0 },
@@ -195,23 +226,55 @@ RegisterCommand(config.addCommand, function()
     local slotType = findType(input[1])
     if not slotType then exports.qbx_core:Notify('Izaberi tip odjeće', 'error') return end
 
-    local label = (input[2] and input[2] ~= '' and input[2]) or slotType.label
-    local compStr = (input[3] and input[3] ~= '' and input[3]) or slotType.comps
-    local slots = parseSlots(compStr)
-    if #slots == 0 then exports.qbx_core:Notify('Neispravne komponente', 'error') return end
-
     local gender = getGender()
-    local pieces = buildPieces(slots, gender)
+    local override = input[3] and input[3] ~= '' and input[3]
     local stats = {
         warmth = input[4] or 0,
         heatPenalty = input[5] or 0,
         radProtection = (input[6] or 0) / 100,
     }
 
-    -- server dodjeljuje jedinstveno ime (jakna_1, jakna_2, ...) i vraća ga
-    local name = lib.callback.await('qbx_core:createClothingDef', false, slotType.value, { label = label, pieces = pieces, stats = stats })
-    if not name then exports.qbx_core:Notify('Nije moguće kreirati (dozvola?)', 'error') return end
+    local targets = {}
+    if slotType.value == 'outfit' and not override then
+        -- BATCH: svaki nošeni komad postaje zaseban item
+        local ped = cache.ped
+        for _, os in ipairs(OUTFIT_SLOTS) do
+            local present = true
+            if os.type == 'prop' then
+                if GetPedPropIndex(ped, os.id) == -1 then present = false end
+            elseif OPTIONAL[os.id] and GetPedDrawableVariation(ped, os.id) == 0 then
+                present = false
+            end
+            if present then
+                local pieces = buildPieces({ { type = os.type, id = os.id } }, gender)
+                if #pieces > 0 then
+                    -- statovi se primjenjuju samo na gornji dio (jaknu); ostalo 0 (uredi po želji)
+                    local pieceStats = (os.type == 'component' and os.id == 11) and stats or { warmth = 0, heatPenalty = 0, radProtection = 0 }
+                    targets[#targets + 1] = { prefix = os.prefix, label = os.label, pieces = pieces, slot = { type = os.type, id = os.id }, stats = pieceStats }
+                end
+            end
+        end
+        if #targets == 0 then exports.qbx_core:Notify('Nema komada na sebi', 'error') return end
+    else
+        -- JEDAN komad/def
+        local label = (input[2] and input[2] ~= '' and input[2]) or slotType.label
+        local compStr = override or slotType.comps
+        local slots = parseSlots(compStr)
+        if #slots == 0 then exports.qbx_core:Notify('Neispravne komponente', 'error') return end
+        targets[1] = { prefix = slotType.value, label = label, pieces = buildPieces(slots, gender), slot = slots[1], stats = stats }
+    end
 
-    exports.qbx_core:Notify(('Pravim sliku za "%s" (%s)...'):format(name, gender), 'inform')
-    generateImage(name, slots)
+    -- kreiraj def za svaki -> jedinstveno ime
+    local valid = {}
+    for _, t in ipairs(targets) do
+        local name = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })
+        if name then
+            t.name = name
+            valid[#valid + 1] = t
+        end
+    end
+    if #valid == 0 then exports.qbx_core:Notify('Nije moguće kreirati (dozvola?)', 'error') return end
+
+    exports.qbx_core:Notify(('Pravim slike za %d komada...'):format(#valid), 'inform')
+    captureBatch(valid, gender)
 end, false)
