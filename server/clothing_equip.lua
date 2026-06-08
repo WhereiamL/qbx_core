@@ -53,7 +53,9 @@ local function isCloth(id)
     return type(id) == 'string' and id:sub(1, #PREFIX) == PREFIX
 end
 
-exports.ox_inventory:registerHook('swapItems', function(payload)
+-- ovaj gridstyle registerHook ocekuje callable TABELU (radi getmetatable(cb) + cb.resource=...),
+-- obicna funkcija puca i hook se ne registruje
+local swapHook = setmetatable({}, { __call = function(_, payload)
     local toCloth = isCloth(payload.toInventory)
     local fromCloth = isCloth(payload.fromInventory)
     if not toCloth and not fromCloth then return true end
@@ -89,4 +91,10 @@ exports.ox_inventory:registerHook('swapItems', function(payload)
     end
 
     return true
+end })
+
+CreateThread(function()
+    while GetResourceState('ox_inventory') ~= 'started' do Wait(250) end
+    local ok, err = pcall(function() return exports.ox_inventory:registerHook('swapItems', swapHook) end)
+    print(('[clothing] swapItems hook registrovan: %s %s'):format(tostring(ok), ok and '' or tostring(err)))
 end)
