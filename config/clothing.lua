@@ -6,6 +6,22 @@ return {
     genericItem = 'fivez_clothing',
     inventoryResource = 'ox_inventory', -- ime ox_inventory resursa (promijeni ako je npr. 'ox_inventory-gridstyle')
 
+    equip = {
+        command = 'odjeca',
+        slots = {
+            { label = 'Jakna',     type = 'component', id = 11 },
+            { label = 'Majica',    type = 'component', id = 8 },
+            { label = 'Pantalone', type = 'component', id = 4 },
+            { label = 'Obuća',     type = 'component', id = 6 },
+            { label = 'Maska',     type = 'component', id = 1 },
+            { label = 'Pancir',    type = 'component', id = 9 },
+            { label = 'Torba',     type = 'component', id = 5 },
+            { label = 'Rukavice',  type = 'component', id = 3 },
+            { label = 'Kapa',      type = 'prop',      id = 0 },
+            { label = 'Naočale',   type = 'prop',      id = 1 },
+        },
+    },
+
     greenScreen = {
         method = 'diff',            -- 'diff' = 2 slike (bez propa, radi svuda) | 'chroma' = zelena kutija (treba stream)
         diffThreshold = 38,         -- osjetljivost izdvajanja (manje = vise hvata)

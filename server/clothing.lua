@@ -28,6 +28,8 @@ lib.callback.register('qbx_core:getClothingDefs', function()
     return allDefs()
 end)
 
+exports('GetClothingDef', function(name) return allDefs()[name] end)
+
 local function statDesc(stats)
     stats = stats or {}
     local lines = {}

@@ -45,6 +45,7 @@ server_scripts {
     'server/loops.lua',
     'server/needs.lua',
     'server/clothing.lua',
+    'server/clothing_equip.lua',
     'server/character.lua',
     'server/vehicle-persistence.lua',
     'bridge/qb/server/main.lua',

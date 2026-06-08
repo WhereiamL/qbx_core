@@ -118,6 +118,24 @@ RegisterCommand(config.unequipCommand, function()
     TriggerServerEvent('qbx_core:server:syncClothing', {})
 end, false)
 
+RegisterNetEvent('qbx_core:client:equipDef', function(name)
+    if name and not worn[name] then equip(name, true) end
+end)
+
+RegisterNetEvent('qbx_core:client:unequipDef', function(name)
+    if name then unequip(name, true) end
+end)
+
+RegisterNetEvent('qbx_core:client:clothNotify', function(msg)
+    exports.qbx_core:Notify(msg, 'error')
+end)
+
+if config.equip then
+    RegisterCommand(config.equip.command, function()
+        TriggerServerEvent('qbx_core:server:openClothing')
+    end, false)
+end
+
 RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     worn = {}
     if type(list) ~= 'table' then return end
