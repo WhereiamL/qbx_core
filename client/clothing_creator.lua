@@ -133,7 +133,9 @@ local function takeShot()
 end
 
 local function isolateOnClone(clone, pieces, gender)
-    for _, c in ipairs({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11 }) do SetPedComponentVariation(clone, c, -1, 0, 0) end
+    SetPedComponentVariation(clone, 0, 0, 0, 0)
+    for _, c in ipairs({ 1, 5, 7, 9 }) do SetPedComponentVariation(clone, c, 0, 0, 0) end
+    for _, c in ipairs({ 2, 3, 4, 6, 8, 11 }) do SetPedComponentVariation(clone, c, -1, 0, 0) end
     for _, p in ipairs({ 0, 1, 2, 6, 7 }) do ClearPedProp(clone, p) end
     for _, piece in ipairs(pieces) do
         local v = piece[gender] or piece.male
