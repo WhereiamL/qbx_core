@@ -193,7 +193,7 @@ RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
 
     local png = b64decode(b64)
     local res = GetCurrentResourceName()
-    local saved = SaveResourceFile(res, ('images/%s.png'):format(name), png, -1)
+    local saved = SaveResourceFile(res, ('images/%s.png'):format(name), png, #png)
     if saved == false or #png == 0 then
         exports.qbx_core:Notify(src, ('Slika nije zapisana (duzina %d)'):format(#png), 'error')
     end

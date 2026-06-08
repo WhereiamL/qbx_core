@@ -99,9 +99,17 @@ local function toggle(name, stats)
     if worn[name] then unequip(name) else equip(name, false, stats) end
 end
 
-exports('equipClothing', function(data, slot)
-    local meta = (slot and slot.metadata) or (data and data.metadata)
-    local name = (meta and meta.clothing) or (slot and slot.name) or (data and data.name)
+exports('equipClothing', function(...)
+    local meta, fallbackName
+    for i = 1, select('#', ...) do
+        local v = select(i, ...)
+        if type(v) == 'table' then
+            if v.metadata and v.metadata.clothing then meta = v.metadata break end
+            if v.clothing then meta = v break end
+            if v.name and not fallbackName then fallbackName = v.name end
+        end
+    end
+    local name = (meta and meta.clothing) or fallbackName
     if name then toggle(name, meta and meta.stats) end
 end)
 
