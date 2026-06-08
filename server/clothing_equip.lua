@@ -66,10 +66,12 @@ exports.ox_inventory:registerHook('swapItems', function(payload)
         local defName = moving.metadata and moving.metadata.clothing
         local def = defName and exports.qbx_core:GetClothingDef(defName)
         if not def then return false end
-        local idx = type(payload.toSlot) == 'number' and payload.toSlot or (type(payload.toSlot) == 'table' and payload.toSlot.slot)
-        if idx and not defMatchesSlot(def, idx) then
-            TriggerClientEvent('qbx_core:client:clothNotify', src, 'Pogrešan slot za ovaj komad')
-            return false
+        if config.equip.strict then
+            local idx = type(payload.toSlot) == 'number' and payload.toSlot or (type(payload.toSlot) == 'table' and payload.toSlot.slot)
+            if idx and not defMatchesSlot(def, idx) then
+                TriggerClientEvent('qbx_core:client:clothNotify', src, 'Pogrešan slot za ovaj komad')
+                return false
+            end
         end
         TriggerClientEvent('qbx_core:client:equipDef', src, defName)
         return true

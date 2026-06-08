@@ -8,6 +8,7 @@ return {
 
     equip = {
         command = 'odjeca',
+        strict = false, -- Faza 1: prihvati bilo koji slot; Faza 2 (paperdoll) -> true
         slots = {
             { label = 'Jakna',     type = 'component', id = 11 },
             { label = 'Majica',    type = 'component', id = 8 },
