@@ -297,21 +297,16 @@ RegisterCommand(config.addCommand, function()
 
     if input[7] then targets = expandTextures(targets, gender) end
 
-    local valid, skipped = {}, 0
+    local valid = {}
     for _, t in ipairs(targets) do
-        local name, existed = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })
-        if name and not existed then
+        local name = lib.callback.await('qbx_core:createClothingDef', false, t.prefix, { label = t.label, pieces = t.pieces, stats = t.stats })
+        if name then
             t.name = name
             valid[#valid + 1] = t
-        elseif existed then
-            skipped = skipped + 1
         end
     end
 
-    if #valid == 0 then
-        exports.qbx_core:Notify(skipped > 0 and ('Sve već postoji (%d preskočeno)'):format(skipped) or 'Nije moguće kreirati (dozvola?)', 'inform')
-        return
-    end
-    exports.qbx_core:Notify(('Pravim slike za %d komada%s...'):format(#valid, skipped > 0 and (', %d preskočeno'):format(skipped) or ''), 'inform')
+    if #valid == 0 then exports.qbx_core:Notify('Nije moguće kreirati (dozvola?)', 'error') return end
+    exports.qbx_core:Notify(('Pravim slike za %d komada...'):format(#valid), 'inform')
     captureBatch(valid, gender)
 end, false)
