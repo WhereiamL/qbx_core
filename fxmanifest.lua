@@ -20,6 +20,7 @@ client_scripts {
     'client/groups.lua',
     'client/functions.lua',
     'client/loops.lua',
+    'client/needs.lua',
     'client/events.lua',
     'client/character.lua',
     'client/discord.lua',
@@ -37,6 +38,7 @@ server_scripts {
     'server/events.lua',
     'server/commands.lua',
     'server/loops.lua',
+    'server/needs.lua',
     'server/character.lua',
     'server/vehicle-persistence.lua',
     'bridge/qb/server/main.lua',
@@ -59,6 +61,7 @@ files {
     'bridge/qb/shared/export-function.lua',
     'config/client.lua',
     'config/shared.lua',
+    'config/survival.lua',
     'locales/*.json'
 }
 
