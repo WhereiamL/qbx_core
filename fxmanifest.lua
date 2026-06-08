@@ -73,6 +73,7 @@ files {
     'html/app.js',
     'html/hud.js',
     'html/hud.css',
+    'images/*.png',
     'locales/*.json'
 }
 

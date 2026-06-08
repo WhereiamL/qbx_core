@@ -185,14 +185,14 @@ RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     if type(name) ~= 'string' or type(b64) ~= 'string' or b64 == '' then return end
 
     local png = b64decode(b64)
-    local inv = config.inventoryResource or 'ox_inventory'
-    local saved = SaveResourceFile(inv, ('web/images/%s.png'):format(name), png, -1)
+    local res = GetCurrentResourceName()
+    local saved = SaveResourceFile(res, ('images/%s.png'):format(name), png, -1)
     if saved == false or #png == 0 then
-        exports.qbx_core:Notify(src, ('Slika nije zapisana (resurs "%s"? duzina %d) — provjeri config.inventoryResource'):format(inv, #png), 'error')
+        exports.qbx_core:Notify(src, ('Slika nije zapisana (duzina %d)'):format(#png), 'error')
     end
 
     if savedDefs[name] then
-        savedDefs[name].image = ('nui://%s/web/images/%s.png'):format(inv, name)
+        savedDefs[name].image = ('nui://%s/images/%s.png'):format(res, name)
         persist()
         TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, savedDefs[name])
     end
