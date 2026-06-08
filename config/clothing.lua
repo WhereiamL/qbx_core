@@ -4,6 +4,7 @@ return {
     addCommand = 'dodaj',
     adminOnly = false,
     genericItem = 'clothing',
+    inventoryResource = 'ox_inventory', -- ime ox_inventory resursa (promijeni ako je npr. 'ox_inventory-gridstyle')
 
     greenScreen = {
         method = 'diff',            -- 'diff' = 2 slike (bez propa, radi svuda) | 'chroma' = zelena kutija (treba stream)

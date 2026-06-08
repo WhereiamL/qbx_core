@@ -51,7 +51,11 @@ end
 local function giveClothing(src, defName, count)
     local def = allDefs()[defName]
     if not def then return false end
-    return exports.ox_inventory:AddItem(src, config.genericItem, count or 1, buildMeta(defName, def))
+    local ok = exports.ox_inventory:AddItem(src, config.genericItem, count or 1, buildMeta(defName, def))
+    if not ok then
+        exports.qbx_core:Notify(src, ('Ne mogu dati "%s" — provjeri da je item "%s" registrovan u inventaru'):format(defName, config.genericItem), 'error')
+    end
+    return ok
 end
 exports('GiveClothingItem', giveClothing)
 
@@ -181,10 +185,14 @@ RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
     if type(name) ~= 'string' or type(b64) ~= 'string' or b64 == '' then return end
 
     local png = b64decode(b64)
-    SaveResourceFile('ox_inventory', ('web/images/%s.png'):format(name), png, -1)
+    local inv = config.inventoryResource or 'ox_inventory'
+    local saved = SaveResourceFile(inv, ('web/images/%s.png'):format(name), png, -1)
+    if saved == false or #png == 0 then
+        exports.qbx_core:Notify(src, ('Slika nije zapisana (resurs "%s"? duzina %d) — provjeri config.inventoryResource'):format(inv, #png), 'error')
+    end
 
     if savedDefs[name] then
-        savedDefs[name].image = ('nui://ox_inventory/web/images/%s.png'):format(name)
+        savedDefs[name].image = ('nui://%s/web/images/%s.png'):format(inv, name)
         persist()
         TriggerClientEvent('qbx_core:client:clothingDefUpdated', -1, name, savedDefs[name])
     end
