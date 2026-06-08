@@ -3,7 +3,7 @@ return {
     devCapture = true,
     addCommand = 'dodaj',
     adminOnly = false,
-    genericItem = 'clothing',
+    genericItem = 'fivez_clothing',
     inventoryResource = 'ox_inventory', -- ime ox_inventory resursa (promijeni ako je npr. 'ox_inventory-gridstyle')
 
     greenScreen = {
