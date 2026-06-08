@@ -51,9 +51,17 @@ return {
     },
 
     relieve = {
-        -- PLACEHOLDER base GTA anime — slobodno zamijeni svojim streamanim
-        pee = { anim = { dict = 'amb@world_human_stand_impatient@male@no_sign@base', clip = 'base' }, duration = 6000 },
-        poop = { anim = { dict = 'amb@medic@standing@kneel@base', clip = 'base' }, duration = 9000 },
+        -- anime iz renzu_hygiene (+ particle efekti)
+        pee = {
+            anim = { dict = 'misscarsteal2peeing', clip = 'peeing_loop' },
+            ptfx = { dict = 'core', name = 'ent_amb_peeing', offset = vec3(0.0, 0.1, -0.05) },
+            duration = 6000,
+        },
+        poop = {
+            anim = { dict = 'timetable@ron@ig_3_couch', clip = 'base' },
+            ptfx = { dict = 'core', name = 'ent_anim_dog_poo', offset = vec3(0.0, -0.1, -0.45) },
+            duration = 9000,
+        },
         minToRelieve = 15,        -- ispod ovog "ne treba ti"
         autoInfectionChance = 20, -- % šansa infekcije pri auto-pražnjenju (preko qbx_medical)
     },

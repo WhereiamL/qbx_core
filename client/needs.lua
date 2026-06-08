@@ -72,6 +72,15 @@ CreateThread(function()
     end
 end)
 
+-- pokreni particle efekat na karlici, vrati handle (ili nil)
+local function startRelievePtfx(cfg)
+    if not cfg.ptfx or not lib.requestNamedPtfxAsset(cfg.ptfx.dict, 1000) then return end
+    UseParticleFxAsset(cfg.ptfx.dict)
+    local o = cfg.ptfx.offset or vec3(0.0, 0.0, 0.0)
+    local bone = GetPedBoneIndex(cache.ped, 11816) -- lower body
+    return StartParticleFxLoopedOnEntityBone(cfg.ptfx.name, cache.ped, o.x, o.y, o.z, 0.0, 0.0, 0.0, bone, 1.0, false, false, false)
+end
+
 -- olakšanje
 local function relieve(kind)
     local cfg = kind == 'pee' and config.relieve.pee or config.relieve.poop
@@ -80,6 +89,7 @@ local function relieve(kind)
         exports.qbx_core:Notify('Ne treba ti', 'error')
         return
     end
+    local fx = startRelievePtfx(cfg)
     local ok = lib.progressBar({
         duration = cfg.duration,
         label = kind == 'pee' and 'Pišanje...' or 'Obavljanje nužde...',
@@ -87,6 +97,8 @@ local function relieve(kind)
         disable = { move = true, combat = true, car = true },
         anim = { dict = cfg.anim.dict, clip = cfg.anim.clip },
     })
+    if fx then StopParticleFxLooped(fx, false) end
+    if cfg.ptfx then RemoveNamedPtfxAsset(cfg.ptfx.dict) end
     if ok then TriggerServerEvent('qbx_core:server:relieve', kind) end
 end
 
@@ -100,6 +112,8 @@ RegisterNetEvent('qbx_core:client:autoRelieve', function(kind)
     if cfg.anim and lib.requestAnimDict(cfg.anim.dict, 1000) then
         TaskPlayAnim(cache.ped, cfg.anim.dict, cfg.anim.clip, 8.0, -8.0, 3000, 1, 0, false, false, false)
     end
+    local fx = startRelievePtfx(cfg)
+    if fx then SetTimeout(3000, function() StopParticleFxLooped(fx, false) end) end
 end)
 
 -- topli/hladni napici (ox_inventory item -> ovaj export)
