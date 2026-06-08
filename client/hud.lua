@@ -4,21 +4,34 @@ local ps = LocalPlayer.state
 local hudOn = true
 local started = false
 
--- fivez_injuries: izvuci bleeding/fracture/infection iz per-bodypart statebaga
+local PART_LABEL = {
+    head = 'Glava', neck = 'Vrat', chest = 'Grudi', stomach = 'Stomak',
+    left_arm = 'Lijeva ruka', right_arm = 'Desna ruka',
+    left_hand = 'Lijeva šaka', right_hand = 'Desna šaka',
+    left_leg = 'Lijeva noga', right_leg = 'Desna noga',
+    left_foot = 'Lijevo stopalo', right_foot = 'Desno stopalo',
+}
+
+-- fivez_injuries: izvuci status iz per-bodypart statebaga
 local function scanInjuries()
-    local bleeding, fracture, infection = false, false, false
+    local bleeding, infection, fractures = false, 0, {}
     local inj = ps.injuries
     if type(inj) == 'table' then
-        for _, bp in pairs(inj) do
+        for key, bp in pairs(inj) do
             if type(bp) == 'table' then
                 if (bp.bleeding or 0) > 0 then bleeding = true end
-                if bp.fracture then fracture = true end
-                if (bp.infection or 0) > 0 then infection = true end
+                if (bp.infection or 0) > infection then infection = bp.infection end
+                if bp.fracture then fractures[#fractures + 1] = PART_LABEL[key] or key end
             end
         end
     end
     if ps.internalBleeding then bleeding = true end
-    return bleeding, fracture, infection
+    local fractureLabel
+    if #fractures > 0 then
+        fractureLabel = fractures[1]
+        if #fractures > 1 then fractureLabel = fractureLabel .. ' +' .. (#fractures - 1) end
+    end
+    return bleeding, math.floor(infection + 0.5), fractureLabel
 end
 
 local function healthPct(ped)
@@ -50,7 +63,8 @@ local function startHud()
             end
 
             local ped = cache.ped
-            local bleeding, fracture, infection = scanInjuries()
+            local bleeding, infection, fractureLabel = scanInjuries()
+            local temp = num(ps.temperature or 50)
 
             local veh = cache.vehicle
             local vinfo
@@ -65,18 +79,24 @@ local function startHud()
                 action = 'hud',
                 show = true,
                 stats = {
+                    radiation = num(ps.radiation or 0),
+                    temp = temp,
+                    tempC = math.floor(-10 + (temp / 100) * 50 + 0.5),
                     health = healthPct(ped),
                     armor = num(GetPedArmour(ped)),
                     blood = num(ps.blood or 100),
                     hunger = num(ps.hunger or 100),
                     thirst = num(ps.thirst or 100),
-                    temp = num(ps.temperature or 50),
                     bladder = num(ps.bladder or 0),
                     bowel = num(ps.bowel or 0),
-                    radiation = num(ps.radiation or 0),
                     stamina = num(100.0 - math.min(100.0, GetPlayerSprintStaminaRemaining(cache.playerId))),
                 },
-                debuffs = { bleeding = bleeding, fracture = fracture, disease = infection, wetness = ps.wet == true },
+                status = {
+                    infection = infection,
+                    fracture = fractureLabel,
+                    bleeding = bleeding,
+                    wetness = ps.wet == true,
+                },
                 veh = vinfo,
             })
 

@@ -1,45 +1,39 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  width: 100%; height: 100%; overflow: hidden;
-  background: transparent;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  user-select: none;
+  width: 100%; height: 100%; overflow: hidden; background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif; user-select: none;
 }
 
 #hud {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  width: 190px;
-  display: none;
-  flex-direction: column;
-  gap: 8px;
-  align-items: stretch;
+  position: absolute; right: 16px; bottom: 16px;
+  width: 210px; display: none; flex-direction: column; gap: 6px; align-items: stretch;
 }
 
-/* debuffi (samo kad aktivni) */
-#debuffs { display: flex; gap: 7px; justify-content: flex-end; min-height: 22px; }
-.debuff { width: 22px; height: 22px; display: none; }
-.debuff.show { display: block; animation: pulse 1.4s ease-in-out infinite; }
-.debuff svg { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
-.debuff.bleeding, .debuff.fracture, .debuff.disease { color: #f85149; }
-.debuff.wetness { color: #4ab8e8; }
+/* kontekstualni status (prelom/infekcija/krvarenje/mokar) */
+#status { display: flex; flex-direction: column; gap: 6px; }
+.spill { display: none; align-items: center; height: 26px; border-radius: 7px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.45); }
+.spill.show { display: flex; animation: pulse 1.6s ease-in-out infinite; }
+.spill .chip { width: 28px; height: 26px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.28); flex: 0 0 28px; }
+.spill .chip svg { width: 16px; height: 16px; fill: #fff; }
+.spill .txt { padding: 0 10px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); white-space: nowrap; }
+.spill.red { background: #c0392b; }
+.spill.blue { background: #2980b9; }
 
 /* vozilo */
-#veh { display: none; background: rgba(0,0,0,.5); border-radius: 6px; padding: 6px 9px; color: #fff; }
+#veh { display: none; background: rgba(18,20,24,.85); border-radius: 7px; padding: 6px 9px; color: #fff; }
 #veh .spd { text-align: right; font-weight: 700; font-size: 20px; line-height: 1; }
 #veh .spd small { font-size: 10px; opacity: .65; font-weight: 400; margin-left: 3px; }
 #veh .fuel { height: 5px; background: rgba(255,255,255,.15); border-radius: 3px; margin-top: 5px; overflow: hidden; }
 #veh .fuel i { display: block; height: 100%; width: 0; background: #fff; border-radius: 3px; transition: width .25s ease; }
 
-/* statovi (linije kao stamina) */
+/* statovi (pune pill trake) */
 #stats { display: flex; flex-direction: column; gap: 6px; }
-.row { display: flex; align-items: center; gap: 8px; height: 16px; }
-.row.hide { display: none; }
-.row .ic { flex: 0 0 16px; width: 16px; height: 16px; color: #d7dbe0; }
-.row .ic svg { width: 100%; height: 100%; fill: currentColor; filter: drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
-.row .track { flex: 1; height: 7px; background: rgba(0,0,0,.55); border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
-.row .fill { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .25s ease, background .25s ease; }
-.row .num { flex: 0 0 24px; text-align: right; font-size: 11px; color: #e9ecef; text-shadow: 0 1px 2px #000; }
+.pill { display: flex; align-items: center; height: 26px; border-radius: 7px; overflow: hidden; background: rgba(18,20,24,.85); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.pill.hide { display: none; }
+.pill .chip { width: 28px; height: 26px; flex: 0 0 28px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.32); z-index: 2; }
+.pill .chip svg { width: 16px; height: 16px; fill: #e8eaed; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+.pill .bar { position: relative; flex: 1; height: 100%; }
+.pill .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0; opacity: .92; transition: width .25s ease, background .25s ease; }
+.pill .val { position: absolute; left: 9px; top: 0; height: 100%; display: flex; align-items: center; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.85); z-index: 2; }
 
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
