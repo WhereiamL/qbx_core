@@ -65,4 +65,33 @@ return {
         minToRelieve = 15,        -- ispod ovog "ne treba ti"
         autoInfectionChance = 20, -- % šansa infekcije pri auto-pražnjenju (preko qbx_medical)
     },
+
+    radiation = {
+        enabled = true,
+        default = 0, min = 0, max = 100,
+        tickInterval = 5,    -- sekundi: klijent provjerava zonu (zbog kretanja češće)
+        maxDelta = 12,       -- anti-abuse clamp po ticku
+        decayPerTick = 2,    -- prirodni pad doze van zone (po klijent ticku)
+
+        -- efekti (na akumuliranu dozu)
+        sicknessThreshold = 40, -- iznad: muka (blur + povremeno povraćanje)
+        damageThreshold = 70,   -- iznad: HP šteta -> DOWNED
+        damage = 4,             -- HP po ciklusu
+        vomitChance = 15,       -- % šansa povraćanja po efekt-ciklusu dok je bolestan
+        screenFx = 'DrugsTrevorClownsFight', -- base-game drug FX (distorzija); loop dok je bolestan
+        vomitAnim = { dict = 'missfbi3_party_d', clip = 'vomit_loop' },
+
+        -- geiger brojač (native zvuk; zamjenjivo custom audiom preko exporta)
+        geiger = {
+            soundName = 'NAV_UP_DOWN',
+            soundSet = 'HUD_FRONTEND_DEFAULT_SOUNDSET',
+            minInterval = 120,  -- ms na max intenzitetu (brzo tikanje)
+            maxInterval = 1500, -- ms na slabom intenzitetu
+        },
+
+        -- zone (sfere); intensity = doza po klijent ticku unutar zone
+        zones = {
+            { coords = vec3(3550.0, 3680.0, 30.0), radius = 120.0, intensity = 6 }, -- PRIMJER, zamijeni
+        },
+    },
 }

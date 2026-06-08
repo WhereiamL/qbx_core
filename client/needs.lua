@@ -14,6 +14,9 @@ end)
 AddStateBagChangeHandler('bowel', ('player:%s'):format(cache.serverId), function(_, _, value)
     TriggerEvent('hud:client:UpdateBowel', value)
 end)
+AddStateBagChangeHandler('radiation', ('player:%s'):format(cache.serverId), function(_, _, value)
+    TriggerEvent('hud:client:UpdateRadiation', value)
+end)
 
 -- TEMPERATURA: javljaj okolinu serveru
 CreateThread(function()
@@ -119,3 +122,106 @@ end)
 -- topli/hladni napici (ox_inventory item -> ovaj export)
 exports('useHotDrink', function() TriggerServerEvent('qbx_core:server:drinkTemp', 'hot') end)
 exports('useColdDrink', function() TriggerServerEvent('qbx_core:server:drinkTemp', 'cold') end)
+
+-- ========================== RADIJACIJA ==========================
+local radProtection = 0 -- 0..1 (1 = hazmat, puni imunitet); postavlja je clothing/hazmat skripta
+exports('SetRadiationProtection', function(level)
+    radProtection = math.max(0, math.min(1, tonumber(level) or 0))
+end)
+
+-- vrati najjaču zonu/intenzitet na trenutnoj poziciji (lokalno, iz configa)
+local function currentRadField()
+    local coords = GetEntityCoords(cache.ped)
+    local best = 0
+    for i = 1, #config.radiation.zones do
+        local z = config.radiation.zones[i]
+        if #(coords - z.coords) <= z.radius then
+            if z.intensity > best then best = z.intensity end
+        end
+    end
+    return best
+end
+
+-- javljaj server-u izloženost
+CreateThread(function()
+    if not config.radiation.enabled then return end
+    while true do
+        Wait(config.radiation.tickInterval * 1000)
+        if QBX.IsLoggedIn and not playerState.isDead then
+            local intensity = currentRadField()
+            TriggerServerEvent('qbx_core:server:radTick', {
+                inZone = intensity > 0,
+                intensity = intensity,
+                protection = radProtection,
+            })
+        end
+    end
+end)
+
+-- efekti radijacije (muka/distorzija + HP šteta -> DOWNED)
+CreateThread(function()
+    if not config.radiation.enabled then return end
+    local r = config.radiation
+    local fxActive = false
+    while true do
+        local sleep = 4000
+        if QBX.IsLoggedIn and not playerState.isDead then
+            local rad = playerState.radiation or 0
+            if rad >= r.sicknessThreshold then
+                if not fxActive then AnimpostfxPlay(r.screenFx, 0, true); fxActive = true end
+                if math.random(100) <= r.vomitChance and not IsPedRagdoll(cache.ped) then
+                    local a = r.vomitAnim
+                    if lib.requestAnimDict(a.dict, 1000) then
+                        TaskPlayAnim(cache.ped, a.dict, a.clip, 8.0, -8.0, 4000, 0, 0, false, false, false)
+                    end
+                end
+            elseif fxActive then
+                AnimpostfxStop(r.screenFx); fxActive = false
+            end
+
+            if rad >= r.damageThreshold then
+                local hp = GetEntityHealth(cache.ped)
+                if hp > 0 then SetEntityHealth(cache.ped, hp - r.damage) end
+                sleep = 3000
+            end
+        elseif fxActive then
+            AnimpostfxStop(r.screenFx); fxActive = false
+        end
+        Wait(sleep)
+    end
+end)
+
+-- geiger brojač (toggle); brzina tikanja skalira sa jačinom polja
+local geigerOn = false
+local function toggleGeiger()
+    if not geigerOn then
+        if exports.ox_inventory:Search('count', 'geiger') < 1 then
+            exports.qbx_core:Notify('Nemaš geiger brojač', 'error')
+            return
+        end
+        geigerOn = true
+        exports.qbx_core:Notify('Geiger brojač: UKLJUČEN', 'success')
+        CreateThread(function()
+            local g = config.radiation.geiger
+            while geigerOn do
+                local intensity = currentRadField()
+                if intensity > 0 and not playerState.isDead then
+                    PlaySoundFrontend(-1, g.soundName, g.soundSet, true)
+                    -- jači intenzitet = kraći razmak između tikova
+                    local ratio = math.min(intensity / 10, 1.0)
+                    Wait(math.floor(g.maxInterval - (g.maxInterval - g.minInterval) * ratio))
+                else
+                    Wait(1500)
+                end
+            end
+        end)
+    else
+        geigerOn = false
+        exports.qbx_core:Notify('Geiger brojač: ISKLJUČEN', 'inform')
+    end
+end
+RegisterCommand('geiger', toggleGeiger, false)
+exports('toggleGeiger', toggleGeiger) -- ox_inventory geiger item
+
+-- anti-rad lijek (ox_inventory item -> ovaj export)
+exports('useAntiRad', function() TriggerServerEvent('qbx_core:server:antiRad') end)

@@ -24,6 +24,14 @@ exports('AddTemperature', function(src, a)
 end)
 exports('AddBladder', function(src, a) return setStat(src, 'bladder', getStat(src, 'bladder', 0) + a, 0, config.bladder.max) end)
 exports('AddBowel', function(src, a) return setStat(src, 'bowel', getStat(src, 'bowel', 0) + a, 0, config.bowel.max) end)
+exports('GetRadiation', function(src) return getStat(src, 'radiation', config.radiation.default) end)
+exports('SetRadiation', function(src, v) return setStat(src, 'radiation', v, config.radiation.min, config.radiation.max) end)
+exports('AddRadiation', function(src, a)
+    return setStat(src, 'radiation', getStat(src, 'radiation', config.radiation.default) + a, config.radiation.min, config.radiation.max)
+end)
+exports('RemoveRadiation', function(src, a)
+    return setStat(src, 'radiation', getStat(src, 'radiation', config.radiation.default) - a, config.radiation.min, config.radiation.max)
+end)
 
 -- inicijalizacija pri ulasku
 RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
@@ -31,6 +39,7 @@ RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
     setStat(src, 'temperature', config.temperature.default, config.temperature.min, config.temperature.max)
     setStat(src, 'bladder', config.bladder.default, 0, config.bladder.max)
     setStat(src, 'bowel', config.bowel.default, 0, config.bowel.max)
+    setStat(src, 'radiation', config.radiation.default, config.radiation.min, config.radiation.max)
 end)
 
 -- TEMPERATURA: klijent javlja okolinu, server računa promjenu (server-authority na matematici)
@@ -67,6 +76,30 @@ RegisterNetEvent('qbx_core:server:drinkTemp', function(kind)
     local src = source
     local a = kind == 'hot' and config.temperature.hotDrink or -config.temperature.coldDrink
     setStat(src, 'temperature', getStat(src, 'temperature', config.temperature.default) + a, config.temperature.min, config.temperature.max)
+end)
+
+-- RADIJACIJA: klijent javlja zonu/zaštitu, server akumulira dozu (server-authority)
+RegisterNetEvent('qbx_core:server:radTick', function(data)
+    if type(data) ~= 'table' then return end
+    local src = source
+    local r = config.radiation
+    local rad = getStat(src, 'radiation', r.default)
+    local delta
+    if data.inZone then
+        local protection = math.max(0, math.min(1, tonumber(data.protection) or 0))
+        delta = (tonumber(data.intensity) or 0) * (1 - protection)
+    else
+        delta = -r.decayPerTick
+    end
+    delta = math.max(-r.maxDelta, math.min(r.maxDelta, delta))
+    setStat(src, 'radiation', rad + delta, r.min, r.max)
+end)
+
+-- anti-rad lijek (ox_inventory item -> klijent export -> ovaj event)
+RegisterNetEvent('qbx_core:server:antiRad', function(amount)
+    local src = source
+    local a = tonumber(amount) or 25
+    setStat(src, 'radiation', getStat(src, 'radiation', config.radiation.default) - a, config.radiation.min, config.radiation.max)
 end)
 
 -- MJEHUR/CRIJEVA rastu kad piješ/jedeš (porast žeđi/gladi)
