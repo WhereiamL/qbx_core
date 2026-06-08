@@ -125,7 +125,12 @@ end
 
 local function takeShot()
     local p = promise.new()
-    exports['screenshot-basic']:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data) p:resolve(data) end)
+    local res = config.greenScreen.screenshotResource or 'screenshot-basic'
+    if res == 'screencapture' then
+        exports['screencapture']:capture({ encoding = 'png', quality = 100, headers = {} }, function(data) p:resolve(data) end)
+    else
+        exports['screenshot-basic']:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data) p:resolve(data) end)
+    end
     return Citizen.Await(p)
 end
 
@@ -146,8 +151,8 @@ end
 
 local function captureBatch(targets, gender)
     local gs = config.greenScreen
-    if GetResourceState('screenshot-basic') ~= 'started' then
-        exports.qbx_core:Notify('screenshot-basic nije pokrenut — slika preskočena', 'error')
+    if GetResourceState(gs.screenshotResource or 'screenshot-basic') ~= 'started' then
+        exports.qbx_core:Notify((gs.screenshotResource or 'screenshot-basic') .. ' nije pokrenut — slika preskočena', 'error')
         return
     end
 

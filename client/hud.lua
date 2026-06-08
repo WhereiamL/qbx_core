@@ -10,6 +10,23 @@ local ps = LocalPlayer.state
 local hudOn = true
 local started = false
 
+-- fivez_injuries: izvuci bleeding/fracture/infection iz per-bodypart statebaga
+local function scanInjuries()
+    local bleeding, fracture, infection = false, false, false
+    local inj = ps.injuries
+    if type(inj) == 'table' then
+        for _, bp in pairs(inj) do
+            if type(bp) == 'table' then
+                if (bp.bleeding or 0) > 0 then bleeding = true end
+                if bp.fracture then fracture = true end
+                if (bp.infection or 0) > 0 then infection = true end
+            end
+        end
+    end
+    if ps.internalBleeding then bleeding = true end
+    return bleeding, fracture, infection
+end
+
 local function sendLoaded()
     SendNUIMessage({
         action = 'loaded',
@@ -47,7 +64,7 @@ local function startHud()
             Wait(HUD.tick)
             if not ps.isLoggedIn then goto continue end
 
-            if ps.isDead then
+            if ps.isDead or ps.unconscious then
                 SendNUIMessage({ action = 'hudVisibility', showHud = false })
                 goto continue
             elseif hudOn then
@@ -67,6 +84,7 @@ local function startHud()
                 SendNUIMessage({ action = 'noVehicle', stamina = 100.0 - math.min(100.0, GetPlayerSprintStaminaRemaining(cache.playerId)) })
             end
 
+            local bleeding, fracture, infection = scanInjuries()
             SendNUIMessage({
                 action = 'onFoot',
                 health = healthPct(ped),
@@ -74,14 +92,14 @@ local function startHud()
                 hunger = ps.hunger or 100,
                 water = ps.thirst or 100,
                 temp = ps.temperature or 50,
-                blood = ps['qbx_medical:blood'] or 100,
+                blood = ps.blood or 100,
                 voice = voiceLevel(),
                 talking = NetworkIsPlayerTalking(PlayerId()),
                 wetness = ps.wet == true,
-                bleeding = (ps['qbx_medical:bleedLevel'] or 0) > 0,
-                disease = (ps['qbx_medical:infection'] or 0) > 0,
+                bleeding = bleeding,
+                disease = infection,
                 illness = (ps.radiation or 0) >= 40,
-                brokenbone = ps['qbx_medical:hasFracture'] == true,
+                brokenbone = fracture,
                 digestion = (ps.bowel or 0) >= 80 or (ps.bladder or 0) >= 80,
                 overweight = false,
             })

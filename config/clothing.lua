@@ -11,6 +11,7 @@ return {
         heading = 330.0,
         camDistance = 1.2,
         imageSize = 320,
+        screenshotResource = 'screencapture',
 
         chroma = { gMin = 90, ratio = 1.35 },
 
