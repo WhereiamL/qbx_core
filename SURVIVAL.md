@@ -24,7 +24,7 @@ Redoslijed pokretanja: `ox_lib` → `oxmysql` → `ox_inventory` → `qbx_core` 
 
 ## 2. ox_inventory itemi
 
-Dodaj u `ox_inventory/data/items.lua`. Item poziva naš export preko `client.export`.
+> Ovi itemi su **već dodani** u `ox_inventory-gridstyle/data/items.lua`. Lista ispod je referenca (item poziva naš export preko `client.export`):
 
 ```lua
 ['clothing']    = { label = 'Odjeća',        weight = 200, client = { export = 'qbx_core.equipClothing' } },
