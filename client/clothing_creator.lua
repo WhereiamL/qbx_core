@@ -126,11 +126,7 @@ end
 local function takeShot()
     local p = promise.new()
     local res = config.greenScreen.screenshotResource or 'screenshot-basic'
-    if res == 'screencapture' then
-        exports['screencapture']:capture({ encoding = 'png', quality = 100, headers = {} }, function(data) p:resolve(data) end)
-    else
-        exports['screenshot-basic']:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data) p:resolve(data) end)
-    end
+    exports[res]:requestScreenshot({ encoding = 'png', quality = 1.0 }, function(data) p:resolve(data) end)
     return Citizen.Await(p)
 end
 
