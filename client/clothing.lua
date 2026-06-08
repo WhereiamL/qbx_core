@@ -1,7 +1,21 @@
 local config = require 'config.clothing'
 
--- obučeni predmeti: [itemName] = { pieces = { {type,id,prev={drawable,texture}}... }, radProtection }
+-- obučeni predmeti: [itemName] = { pieces = {...}, stats = {warmth,heatPenalty,radProtection} }
 local worn = {}
+
+-- saberi statove svih obučenih komada i nahrani survival sisteme
+local function recomputeStats()
+    local warmth, heat, rad = 0, 0, 0
+    for _, w in pairs(worn) do
+        local s = w.stats or {}
+        warmth = warmth + (s.warmth or 0)
+        heat = heat + (s.heatPenalty or 0)
+        if (s.radProtection or 0) > rad then rad = s.radProtection end
+    end
+    exports.qbx_core:SetClothingWarmth(warmth)
+    exports.qbx_core:SetClothingHeat(heat)
+    exports.qbx_core:SetRadiationProtection(rad)
+end
 
 -- definicije odjeće (config + data/clothing.json), dolaze sa servera
 local clothingDefs = {}
@@ -35,7 +49,7 @@ end
 
 local function wornList()
     local list = {}
-    for name in pairs(worn) do list[#list + 1] = name end
+    for name, w in pairs(worn) do list[#list + 1] = { name = name, stats = w.stats } end
     return list
 end
 
@@ -47,12 +61,12 @@ local function unequip(name, skipSync)
         local p = w.pieces[i]
         applyValue(p.type, p.id, p.prev.drawable, p.prev.texture)
     end
-    if w.radProtection then exports.qbx_core:SetRadiationProtection(0) end
     worn[name] = nil
+    recomputeStats()
     if not skipSync then TriggerServerEvent('qbx_core:server:syncClothing', wornList()) end
 end
 
-local function equip(name, skipSync)
+local function equip(name, skipSync, stats)
     local def = clothingDefs[name]
     if not def then return end
     local gender = getGender()
@@ -79,18 +93,23 @@ local function equip(name, skipSync)
             applyValue(piece.type, piece.id, v.drawable, v.texture)
         end
     end
-    worn[name] = { pieces = pieces, radProtection = def.radProtection }
-    if def.radProtection then exports.qbx_core:SetRadiationProtection(def.radProtection) end
+    -- efektivni statovi: metadata po komadu (loot) override-uje bazne iz definicije
+    worn[name] = { pieces = pieces, stats = stats or def.stats }
+    recomputeStats()
     if not skipSync then TriggerServerEvent('qbx_core:server:syncClothing', wornList()) end
 end
 
-local function toggle(name)
-    if worn[name] then unequip(name) else equip(name) end
+local function toggle(name, stats)
+    if worn[name] then unequip(name) else equip(name, false, stats) end
 end
 
--- ox_inventory: item sa client.export = 'qbx_core.equipClothing' (consume = 0)
+-- ox_inventory: generički item 'clothing' (metadata.clothing = ime, metadata.stats = statovi)
+-- ili imenovani item (data.name); client.export = 'qbx_core.equipClothing', consume = 0
 exports('equipClothing', function(data)
-    if data and data.name then toggle(data.name) end
+    if not data then return end
+    local meta = data.metadata
+    local name = (meta and meta.clothing) or data.name
+    if name then toggle(name, meta and meta.stats) end
 end)
 
 -- skini svu obučenu item-odjeću
@@ -103,9 +122,15 @@ end, false)
 RegisterNetEvent('qbx_core:client:reapplyClothing', function(list)
     worn = {}
     if type(list) ~= 'table' then return end
-    for _, name in ipairs(list) do
-        equip(name, true) -- prev se uzima iz tek primijenjenog osnovnog izgleda
+    for _, entry in ipairs(list) do
+        -- podrška za stari format (samo string) i novi ({name, stats})
+        if type(entry) == 'string' then
+            equip(entry, true)
+        elseif type(entry) == 'table' and entry.name then
+            equip(entry.name, true, entry.stats)
+        end
     end
+    recomputeStats()
 end)
 
 -- DEV alat: obuci se u illenium-u pa /outfitcapture <ime_itema> [id...] -> ispiše config-snippet

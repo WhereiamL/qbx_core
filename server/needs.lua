@@ -50,7 +50,7 @@ RegisterNetEvent('qbx_core:server:tempTick', function(env)
     local temp = getStat(src, 'temperature', t.default)
     local delta = 0
 
-    if env.hot then delta += t.heatRise end
+    if env.hot then delta += t.heatRise + (tonumber(env.heatPenalty) or 0) end
     if env.night then delta -= t.nightDrop end
     if env.rain then delta -= t.rainDrop end
     if env.water then delta -= t.waterDrop end

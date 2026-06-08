@@ -1,8 +1,10 @@
 local config = require 'config.survival'
 local playerState = LocalPlayer.state
-local warmth = 0 -- toplina odjeće (drugi resursi je postavljaju ovim exportom)
+local warmth = 0       -- toplina odjeće (smanjuje hladnoću)
+local clothingHeat = 0 -- pregrijavanje od odjeće (diže temperaturu u vrućim zonama)
 
 exports('SetClothingWarmth', function(level) warmth = tonumber(level) or 0 end)
+exports('SetClothingHeat', function(level) clothingHeat = tonumber(level) or 0 end)
 
 -- HUD eventi (qbx_hud može slušati ove)
 AddStateBagChangeHandler('temperature', ('player:%s'):format(cache.serverId), function(_, _, value)
@@ -35,6 +37,7 @@ CreateThread(function()
                 cold = coords.z > t.coldAltitude,
                 hot = t.hotZones[GetNameOfZone(coords.x, coords.y, coords.z)] == true,
                 warmth = warmth,
+                heatPenalty = clothingHeat,
             })
         end
     end
