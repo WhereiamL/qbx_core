@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>HUD Preview</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    background:#0c0d0f; color:#cfd2d6;
+    font-family:'Segoe UI', system-ui, sans-serif;
+    padding:14px; -webkit-text-size-adjust:100%;
+}
+h1 { font-size:18px; font-weight:700; margin-bottom:2px; }
+.sub { font-size:12px; color:#7d828a; margin-bottom:14px; }
+h2 { font-size:13px; color:#9aa0a6; margin:18px 0 8px; letter-spacing:.5px; text-transform:uppercase; }
+
+/* mock ekran */
+.screen {
+    position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden;
+    background:
+        radial-gradient(120% 90% at 50% 10%, #46506a 0%, #2c3346 35%, #1a2030 60%, #0e1320 100%),
+        linear-gradient(#1a2433, #0c1018);
+    box-shadow:0 6px 24px rgba(0,0,0,.5);
+}
+.screen::after { /* "teren" dole */
+    content:''; position:absolute; left:0; right:0; bottom:0; height:42%;
+    background:linear-gradient(transparent, rgba(34,48,28,.55) 40%, rgba(20,30,16,.8));
+}
+
+.stat, .debuff { position:absolute; }
+.cluster { position:absolute; right:3%; bottom:7%; display:flex; align-items:flex-end; gap:10px; }
+.stat {
+    position:relative; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    color:#9aa0a6; opacity:.35; transition:color .3s, opacity .3s, filter .3s;
+}
+.stat svg { width:100%; height:100%; fill:currentColor; filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+.stat.warn { color:#e8a13a; opacity:.85; }
+.stat.high { color:#e0452f; opacity:1; }
+.stat.critical { color:#ff3b2f; opacity:1; }
+.stat.critical svg { filter:drop-shadow(0 0 6px rgba(255,59,47,.8)); animation:pulse 1s infinite; }
+.stat.cold { color:#4ab8e8; }
+.stat.hot { color:#e0452f; }
+.stat.hidden { opacity:0; }
+.stat.ring::after { content:''; position:absolute; inset:-18%; border:2px solid currentColor; border-radius:50%; opacity:.9; }
+.chevrons { position:absolute; top:-14px; left:50%; transform:translateX(-50%); color:#fff; font-size:11px; line-height:.7; text-shadow:0 1px 2px #000; display:none; text-align:center; }
+.chevrons.show { display:block; }
+.chevrons.down { transform:translateX(-50%) rotate(180deg); }
+.chevrons span { display:block; }
+
+.debuffs { position:absolute; left:3%; bottom:14%; display:flex; gap:9px; }
+.debuff { position:relative; width:24px; height:24px; color:#e0452f; display:none; }
+.debuff.show { display:block; animation:pulse 1.4s infinite; }
+.debuff svg { width:100%; height:100%; fill:currentColor; filter:drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+.debuff.wet { color:#4ab8e8; }
+
+.stamwrap { position:absolute; left:3%; bottom:7%; width:130px; height:5px; background:rgba(255,255,255,.12); border-radius:3px; overflow:hidden; opacity:0; transition:opacity .3s; }
+.stamwrap.show { opacity:.9; }
+.stambar { height:100%; background:#e6e6e6; border-radius:3px; transition:width .2s linear, background .3s; }
+.stambar.low { background:#e0452f; }
+
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.45;} }
+
+/* legenda */
+.legend { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:10px; }
+.lcell { background:#16181c; border:1px solid #23262c; border-radius:8px; padding:10px; }
+.lname { font-size:12px; color:#cfd2d6; margin-bottom:8px; font-weight:600; }
+.lstates { display:flex; gap:10px; align-items:flex-end; }
+.lstates .stat { position:relative; opacity:1; }
+.note { font-size:11px; color:#6c7077; margin-top:10px; }
+</style>
+</head>
+<body>
+<h1>Survival HUD — preview</h1>
+<div class="sub">Živi demo (ikone se mijenjaju same) + legenda stanja. Ovo je izgled HUD-a u igri.</div>
+
+<div class="screen">
+    <div class="cluster" id="cluster"></div>
+    <div class="debuffs" id="debuffs"></div>
+    <div class="stamwrap" id="stamwrap"><div class="stambar" id="stambar"></div></div>
+</div>
+
+<h2>Statusi — stanja (ok → kritično)</h2>
+<div class="legend" id="legend"></div>
+
+<h2>Debuffi (vide se samo kad su aktivni)</h2>
+<div class="legend" id="legendDebuffs"></div>
+<div class="note">Bijele strelice = trend (▲ raste / ▼ pada). Ikona blijedi kad je stat ok, pojača se kad treba pažnja.</div>
+
+<script>
+const ICONS = {
+    health:'<svg viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>',
+    armor:'<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 8.9-8 11-4.6-2.1-8-6-8-11V5z"/></svg>',
+    hunger:'<svg viewBox="0 0 24 24"><path d="M12 7c-3 0-5 2-5 6s2 8 5 8c.7 0 1.3-.3 2-.6.7.3 1.3.6 2 .6 3 0 5-5 5-8s-2-6-5-6c-1 0-1.6.4-2 1-.4-.6-1-1-2-1z"/><path d="M12.5 6c.2-1.6 1.4-3 3.2-3.2-.1 1.7-1.4 3.1-3.2 3.2z"/></svg>',
+    thirst:'<svg viewBox="0 0 24 24"><path d="M10 2h4v2.5l1.2 2.3V20a2 2 0 0 1-2 2h-2.4a2 2 0 0 1-2-2V6.8L10 4.5z"/></svg>',
+    temperature:'<svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v8.1a5 5 0 1 0 6 0V5a3 3 0 0 0-3-3zm0 2a1 1 0 0 1 1 1v9.3l.6.3a3 3 0 1 1-3.2 0l.6-.3V5a1 1 0 0 1 1-1z"/><circle cx="12" cy="17.5" r="2.3"/></svg>',
+    bladder:'<svg viewBox="0 0 24 24"><path d="M12 3c4.2 5.2 6.5 8.3 6.5 11.3A6.5 6.5 0 1 1 5.5 14.3C5.5 11.3 7.8 8.2 12 3z"/></svg>',
+    bowel:'<svg viewBox="0 0 24 24"><path d="M9 4c-3 0-5 2-5 5 0 3.5 3 4.5 3 7.5 0 2.2 1.8 3.5 4 3.5 4 0 7-3 7-7 0-2.6-1-4.4-3-5.4-.9-.5-1.2-1-1.2-2C13.6 5.8 11.8 4 9 4z"/></svg>',
+    radiation:'<svg viewBox="0 0 24 24"><path d="M12 12 8 3.6a10 10 0 0 1 8 0z"/><path d="M12 12 3.7 16a10 10 0 0 1-1.5-7.8z"/><path d="M12 12l8.3 4a10 10 0 0 1-6.8 4z"/><circle cx="12" cy="12" r="2.3"/></svg>',
+};
+const DEBUFF_ICONS = {
+    bleeding:ICONS.bladder,
+    disease:'<svg viewBox="0 0 24 24"><path d="M11 2h2v3.1a7 7 0 0 1 2.5 1l2.2-2.2 1.4 1.4-2.2 2.2a7 7 0 0 1 1 2.5H21v2h-3.1a7 7 0 0 1-1 2.5l2.2 2.2-1.4 1.4-2.2-2.2a7 7 0 0 1-2.5 1V21h-2v-3.1a7 7 0 0 1-2.5-1l-2.2 2.2-1.4-1.4 2.2-2.2a7 7 0 0 1-1-2.5H3v-2h3.1a7 7 0 0 1 1-2.5L4.9 6.3l1.4-1.4 2.2 2.2a7 7 0 0 1 2.5-1zm1 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>',
+    brokenBone:'<svg viewBox="0 0 24 24"><path d="M7 3a2.5 2.5 0 0 1 2.3 3.5l8.2 8.2A2.5 2.5 0 1 1 17 18.5l-1.5 1.5a2.5 2.5 0 1 1-3.5-2.3L3.8 9.5A2.5 2.5 0 1 1 5.5 5L7 3.5z"/></svg>',
+    wetness:'<svg viewBox="0 0 24 24"><path d="M7 4c2.2 2.8 3.5 4.6 3.5 6.2A3.5 3.5 0 1 1 3.5 10C3.5 8.5 4.8 6.7 7 4z"/><path d="M16 9c1.8 2.3 2.8 3.8 2.8 5A2.8 2.8 0 1 1 13.2 14c0-1.2 1-2.7 2.8-5z"/></svg>',
+};
+const STATS = [
+    {key:'health',icon:'health',mode:'deplete',always:true,label:'Health'},
+    {key:'hunger',icon:'hunger',mode:'deplete',label:'Hunger'},
+    {key:'thirst',icon:'thirst',mode:'deplete',label:'Thirst'},
+    {key:'temperature',icon:'temperature',mode:'temp',label:'Temp'},
+    {key:'bowel',icon:'bowel',mode:'rise',label:'Crijeva'},
+    {key:'bladder',icon:'bladder',mode:'rise',label:'Mjehur'},
+    {key:'radiation',icon:'radiation',mode:'rise',label:'Radijacija'},
+];
+const sev = (m,v)=> m==='deplete'?Math.min(1,Math.max(0,(100-v)/100)) : m==='rise'?Math.min(1,Math.max(0,v/100)) : (Math.abs(v-50)<=10?0:Math.min(1,(Math.abs(v-50)-10)/40));
+function classFor(s,v){
+    let c='stat'; const x=sev(s.mode,v);
+    const hide=!s.always && x<0.12; if(hide) return c+' hidden';
+    if(x>=0.9)c+=' critical ring'; else if(x>=0.7)c+=' high'; else if(x>=0.4)c+=' warn';
+    if(s.mode==='temp'&&x>0)c+=v<50?' cold':' hot';
+    return c;
+}
+
+// živi HUD
+const cluster=document.getElementById('cluster'); const els={};
+for(const s of STATS){const w=document.createElement('div');w.className='stat hidden';w.innerHTML=`<div class="chevrons"><span>⌃</span><span>⌃</span></div>${ICONS[s.icon]}`;cluster.appendChild(w);els[s.key]={w,c:w.querySelector('.chevrons')};}
+const DEBUFFS=['bleeding','disease','brokenBone','wetness']; const dEls={}; const dc=document.getElementById('debuffs');
+for(const k of DEBUFFS){const d=document.createElement('div');d.className='debuff'+(k==='wetness'?' wet':'');d.innerHTML=DEBUFF_ICONS[k];dc.appendChild(d);dEls[k]=d;}
+const stamwrap=document.getElementById('stamwrap'), stambar=document.getElementById('stambar');
+
+let t=0, prev={};
+function tick(){
+    t+=0.02;
+    const val={
+        health:75+25*Math.sin(t*0.7),
+        hunger:50+50*Math.sin(t*0.5),
+        thirst:50+50*Math.sin(t*0.5+1.2),
+        temperature:50+50*Math.sin(t*0.6),
+        bowel:50+50*Math.sin(t*0.4+2),
+        bladder:50+50*Math.sin(t*0.45+3.5),
+        radiation:50+50*Math.sin(t*0.55+1),
+        stamina:50+50*Math.sin(t*1.5),
+    };
+    for(const s of STATS){
+        const v=val[s.key]; els[s.key].w.className=classFor(s,v);
+        const p=prev[s.key]; const tr=p==null?0:(v>p+0.3?1:(v<p-0.3?-1:0)); prev[s.key]=v;
+        els[s.key].c.className='chevrons'+(tr===1?' show':tr===-1?' show down':'');
+    }
+    const stam=val.stamina; if(stam<99){stamwrap.classList.add('show');stambar.style.width=Math.max(0,Math.min(100,stam))+'%';stambar.classList.toggle('low',stam<25);}else stamwrap.classList.remove('show');
+    // debuffi se pale/gase periodično
+    dEls.bleeding.classList.toggle('show', Math.sin(t*0.8)>0.4);
+    dEls.disease.classList.toggle('show', Math.sin(t*0.5+2)>0.6);
+    dEls.brokenBone.classList.toggle('show', Math.sin(t*0.3+1)>0.7);
+    dEls.wetness.classList.toggle('show', Math.sin(t*0.6+4)>0.3);
+    requestAnimationFrame(tick);
+}
+tick();
+
+// legenda stanja
+const legend=document.getElementById('legend');
+const STATE_VALS={deplete:[100,55,25,5],rise:[10,55,80,98],temp:[50,72,85,98]};
+for(const s of STATS){
+    const cell=document.createElement('div');cell.className='lcell';
+    const vals=STATE_VALS[s.mode];
+    let html=`<div class="lname">${s.label}</div><div class="lstates">`;
+    for(const v of vals){ html+=`<div class="${classFor(s,v).replace('hidden','')}">${ICONS[s.icon]}</div>`; }
+    html+='</div>'; cell.innerHTML=html; legend.appendChild(cell);
+}
+// legenda debuffa
+const ld=document.getElementById('legendDebuffs');
+const DLABEL={bleeding:'Krvarenje',disease:'Bolest',brokenBone:'Slomljena kost',wetness:'Mokar'};
+for(const k of DEBUFFS){
+    const cell=document.createElement('div');cell.className='lcell';
+    cell.innerHTML=`<div class="lname">${DLABEL[k]}</div><div class="lstates"><div class="debuff show ${k==='wetness'?'wet':''}" style="position:relative">${DEBUFF_ICONS[k]}</div></div>`;
+    ld.appendChild(cell);
+}
+</script>
+</body>
+</html>

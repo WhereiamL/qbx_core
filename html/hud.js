@@ -23,6 +23,24 @@ const STATS = [
     { key: 'radiation', icon: 'radiation', mode: 'rise' },
 ];
 
+// debuffi (samo on/off, vide se kad aktivni)
+const DEBUFF_ICONS = {
+    bleeding: '<svg viewBox="0 0 24 24"><path d="M12 3c4.2 5.2 6.5 8.3 6.5 11.3A6.5 6.5 0 1 1 5.5 14.3C5.5 11.3 7.8 8.2 12 3z"/></svg>',
+    disease: '<svg viewBox="0 0 24 24"><path d="M11 2h2v3.1a7 7 0 0 1 2.5 1l2.2-2.2 1.4 1.4-2.2 2.2a7 7 0 0 1 1 2.5H21v2h-3.1a7 7 0 0 1-1 2.5l2.2 2.2-1.4 1.4-2.2-2.2a7 7 0 0 1-2.5 1V21h-2v-3.1a7 7 0 0 1-2.5-1l-2.2 2.2-1.4-1.4 2.2-2.2a7 7 0 0 1-1-2.5H3v-2h3.1a7 7 0 0 1 1-2.5L4.9 6.3l1.4-1.4 2.2 2.2a7 7 0 0 1 2.5-1zm1 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>',
+    brokenBone: '<svg viewBox="0 0 24 24"><path d="M7 3a2.5 2.5 0 0 1 2.3 3.5l8.2 8.2A2.5 2.5 0 1 1 17 18.5l-1.5 1.5a2.5 2.5 0 1 1-3.5-2.3L3.8 9.5A2.5 2.5 0 1 1 5.5 5L7 3.5z"/></svg>',
+    wetness: '<svg viewBox="0 0 24 24"><path d="M7 4c2.2 2.8 3.5 4.6 3.5 6.2A3.5 3.5 0 1 1 3.5 10C3.5 8.5 4.8 6.7 7 4z"/><path d="M16 9c1.8 2.3 2.8 3.8 2.8 5A2.8 2.8 0 1 1 13.2 14c0-1.2 1-2.7 2.8-5z"/></svg>',
+};
+const DEBUFFS = ['bleeding', 'disease', 'brokenBone', 'wetness'];
+const debuffEls = {};
+const debuffCluster = document.getElementById('debuffs');
+for (const k of DEBUFFS) {
+    const d = document.createElement('div');
+    d.className = 'debuff' + (k === 'wetness' ? ' wet' : '');
+    d.innerHTML = DEBUFF_ICONS[k];
+    debuffCluster.appendChild(d);
+    debuffEls[k] = d;
+}
+
 const els = {};
 const cluster = document.getElementById('status');
 for (const s of STATS) {
@@ -80,6 +98,9 @@ window.addEventListener('message', (e) => {
 
     const st = d.stats || {};
     for (const s of STATS) applyStat(s, st[s.key]);
+
+    const db = d.debuffs || {};
+    for (const k of DEBUFFS) debuffEls[k].classList.toggle('show', !!db[k]);
 
     const stam = st.stamina ? st.stamina.v : 100;
     if (stam < 99) {

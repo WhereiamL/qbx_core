@@ -30,10 +30,13 @@ CreateThread(function()
             local ped = cache.ped
             local coords = GetEntityCoords(ped)
             local hour = GetClockHours()
+            local rain = GetRainLevel() > 0.1
+            local water = IsEntityInWater(ped) or IsPedSwimming(ped)
+            playerState:set('wet', rain or water, false) -- za HUD debuff (wetness)
             TriggerServerEvent('qbx_core:server:tempTick', {
                 night = hour >= 22 or hour < 6,
-                rain = GetRainLevel() > 0.1,
-                water = IsEntityInWater(ped) or IsPedSwimming(ped),
+                rain = rain,
+                water = water,
                 cold = coords.z > t.coldAltitude,
                 hot = t.hotZones[GetNameOfZone(coords.x, coords.y, coords.z)] == true,
                 warmth = warmth,

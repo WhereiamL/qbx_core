@@ -51,6 +51,12 @@ CreateThread(function()
                     radiation = { v = rad, t = trend('radiation', rad) },
                     stamina = { v = stamina, t = 0 },
                 },
+                debuffs = {
+                    bleeding = (playerState['qbx_medical:bleedLevel'] or 0) > 0,
+                    disease = (playerState['qbx_medical:infection'] or 0) > 0,
+                    brokenBone = playerState['qbx_medical:hasFracture'] == true,
+                    wetness = playerState.wet == true,
+                },
             })
         elseif shown then
             shown = false
