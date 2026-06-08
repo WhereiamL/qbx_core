@@ -37,15 +37,10 @@ local function currentValue(piece)
 end
 
 local function applyValue(kind, id, drawable, texture)
-    local ped = cache.ped
     if kind == 'prop' then
-        if drawable == -1 then
-            ClearPedProp(ped, id)
-        else
-            SetPedPropIndex(ped, id, drawable, texture, true)
-        end
+        exports['illenium-appearance']:setPedProp(cache.ped, { prop_id = id, drawable = drawable, texture = texture })
     else
-        SetPedComponentVariation(ped, id, drawable, texture or 0, 0)
+        exports['illenium-appearance']:setPedComponent(cache.ped, { component_id = id, drawable = drawable, texture = texture })
     end
 end
 
@@ -115,11 +110,7 @@ exports('equipClothing', function(...)
         end
     end
     local name = (meta and meta.clothing) or fallbackName
-    if not name then exports.qbx_core:Notify('Odjeća: nema imena u metadata', 'error') return end
-    if not clothingDefs[name] then fetchDefs() end
-    if not clothingDefs[name] then exports.qbx_core:Notify(('Odjeća: definicija "%s" nije učitana'):format(name), 'error') return end
-    toggle(name, meta and meta.stats)
-    exports.qbx_core:Notify((worn[name] and 'Obukao: ' or 'Skinuo: ') .. name, 'success')
+    if name then toggle(name, meta and meta.stats) end
 end)
 
 RegisterCommand(config.unequipCommand, function()
