@@ -181,15 +181,19 @@ local function captureBatch(targets, gender)
         FreezeEntityPosition(box, true)
     end
 
+    local capZ = (method == 'diff') and (gs.skyZ or 1100.0) or gs.position.z
     local clone = ClonePed(cache.ped, false, false, true)
-    SetEntityCoordsNoOffset(clone, gs.position.x, gs.position.y, gs.position.z, false, false, false)
+    SetEntityCoordsNoOffset(clone, gs.position.x, gs.position.y, capZ, false, false, false)
     FreezeEntityPosition(clone, true)
     SetEntityInvincible(clone, true)
     SetEntityCollision(clone, false, false)
 
+    if method == 'diff' then
+        SetFocusPosAndVel(gs.position.x, gs.position.y, capZ, 0.0, 0.0, 0.0)
+    end
     NetworkOverrideClockTime(12, 0, 0)
-    RequestCollisionAtCoord(gs.position.x, gs.position.y, gs.position.z)
-    Wait(300)
+    RequestCollisionAtCoord(gs.position.x, gs.position.y, capZ)
+    Wait(500)
 
     local cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, true, 0)
     SetCamActive(cam, true)
@@ -229,6 +233,7 @@ local function captureBatch(targets, gender)
     if DoesEntityExist(clone) then DeleteEntity(clone) end
     if box and DoesEntityExist(box) then DeleteEntity(box) end
     if modelHash then SetModelAsNoLongerNeeded(modelHash) end
+    ClearFocus()
     NetworkClearClockTimeOverride()
 
     SetEntityCoordsNoOffset(cache.ped, backCoords.x, backCoords.y, backCoords.z, false, false, false)
