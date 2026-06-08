@@ -99,10 +99,9 @@ local function toggle(name, stats)
     if worn[name] then unequip(name) else equip(name, false, stats) end
 end
 
-exports('equipClothing', function(data)
-    if not data then return end
-    local meta = data.metadata
-    local name = (meta and meta.clothing) or data.name
+exports('equipClothing', function(data, slot)
+    local meta = (slot and slot.metadata) or (data and data.metadata)
+    local name = (meta and meta.clothing) or (slot and slot.name) or (data and data.name)
     if name then toggle(name, meta and meta.stats) end
 end)
 

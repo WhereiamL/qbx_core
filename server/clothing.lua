@@ -163,19 +163,26 @@ lib.callback.register('qbx_core:createClothingDef', function(source, prefix, def
 end)
 
 local B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local b64map = {}
+for i = 1, #B64 do b64map[B64:byte(i)] = i - 1 end
+
 local function b64decode(data)
-    data = data:gsub('[^' .. B64 .. '=]', '')
-    return (data:gsub('.', function(x)
-        if x == '=' then return '' end
-        local r, f = '', (B64:find(x) - 1)
-        for i = 6, 1, -1 do r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and '1' or '0') end
-        return r
-    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
-        if #x ~= 8 then return '' end
-        local c = 0
-        for i = 1, 8 do c = c + (x:sub(i, i) == '1' and 2 ^ (8 - i) or 0) end
-        return string.char(c)
-    end))
+    data = data:gsub('[^' .. B64 .. ']', '')
+    local out, n = {}, #data
+    local pad = 0
+    for i = 1, n, 4 do
+        local c1 = b64map[data:byte(i)] or 0
+        local c2 = b64map[data:byte(i + 1)] or 0
+        local c3 = b64map[data:byte(i + 2)] or 0
+        local c4 = b64map[data:byte(i + 3)] or 0
+        local v = c1 * 262144 + c2 * 4096 + c3 * 64 + c4
+        out[#out + 1] = string.char(math.floor(v / 65536) % 256, math.floor(v / 256) % 256, v % 256)
+    end
+    local res = table.concat(out)
+    local rem = n % 4
+    if rem == 2 then res = res:sub(1, #res - 2)
+    elseif rem == 3 then res = res:sub(1, #res - 1) end
+    return res
 end
 
 RegisterNetEvent('qbx_core:server:saveClothingImage', function(name, b64)
