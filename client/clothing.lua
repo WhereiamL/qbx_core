@@ -115,7 +115,11 @@ exports('equipClothing', function(...)
         end
     end
     local name = (meta and meta.clothing) or fallbackName
-    if name then toggle(name, meta and meta.stats) end
+    if not name then exports.qbx_core:Notify('Odjeća: nema imena u metadata', 'error') return end
+    if not clothingDefs[name] then fetchDefs() end
+    if not clothingDefs[name] then exports.qbx_core:Notify(('Odjeća: definicija "%s" nije učitana'):format(name), 'error') return end
+    toggle(name, meta and meta.stats)
+    exports.qbx_core:Notify((worn[name] and 'Obukao: ' or 'Skinuo: ') .. name, 'success')
 end)
 
 RegisterCommand(config.unequipCommand, function()
