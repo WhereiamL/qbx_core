@@ -21,6 +21,7 @@ client_scripts {
     'client/functions.lua',
     'client/loops.lua',
     'client/needs.lua',
+    'client/clothing.lua',
     'client/events.lua',
     'client/character.lua',
     'client/discord.lua',
@@ -39,6 +40,7 @@ server_scripts {
     'server/commands.lua',
     'server/loops.lua',
     'server/needs.lua',
+    'server/clothing.lua',
     'server/character.lua',
     'server/vehicle-persistence.lua',
     'bridge/qb/server/main.lua',
@@ -62,6 +64,7 @@ files {
     'config/client.lua',
     'config/shared.lua',
     'config/survival.lua',
+    'config/clothing.lua',
     'locales/*.json'
 }
 
