@@ -2,11 +2,16 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <style>
-        html, body { margin: 0; width: 0; height: 0; overflow: hidden; background: transparent; }
-    </style>
+    <link rel="stylesheet" href="hud.css" />
 </head>
 <body>
+    <!-- HUD (Zone 4: character status dole-desno + stamina dole-lijevo) -->
+    <div id="hud">
+        <div id="status" class="status-cluster"></div>
+        <div id="stamina-wrap"><div id="stamina-bar"></div></div>
+    </div>
+
+    <script src="hud.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

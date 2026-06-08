@@ -25,6 +25,7 @@ client_scripts {
     'client/needs.lua',
     'client/clothing.lua',
     'client/clothing_creator.lua',
+    'client/hud.lua',
     'client/events.lua',
     'client/character.lua',
     'client/discord.lua',
