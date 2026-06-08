@@ -53,9 +53,9 @@ local function isCloth(id)
     return type(id) == 'string' and id:sub(1, #PREFIX) == PREFIX
 end
 
--- ovaj gridstyle registerHook ocekuje callable TABELU (radi getmetatable(cb) + cb.resource=...),
--- obicna funkcija puca i hook se ne registruje
-local swapHook = setmetatable({}, { __call = function(_, payload)
+-- funkcija proslijedjena kroz export postaje funcref (ima metatable na ox strani);
+-- tabela bi se serijalizovala i izgubila metatable -> registerHook puca
+local function swapHook(payload)
     local toCloth = isCloth(payload.toInventory)
     local fromCloth = isCloth(payload.fromInventory)
     if not toCloth and not fromCloth then return true end
@@ -91,7 +91,7 @@ local swapHook = setmetatable({}, { __call = function(_, payload)
     end
 
     return true
-end })
+end
 
 CreateThread(function()
     while GetResourceState('ox_inventory') ~= 'started' do Wait(250) end
