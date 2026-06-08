@@ -3,6 +3,17 @@ local config = require 'config.clothing'
 -- obučeni predmeti: [itemName] = { pieces = { {type,id,prev={drawable,texture}}... }, radProtection }
 local worn = {}
 
+-- definicije odjeće (config + data/clothing.json), dolaze sa servera
+local clothingDefs = {}
+local function fetchDefs()
+    clothingDefs = lib.callback.await('qbx_core:getClothingDefs', false) or {}
+end
+CreateThread(fetchDefs)
+
+RegisterNetEvent('qbx_core:client:clothingDefUpdated', function(name, def)
+    clothingDefs[name] = def
+end)
+
 local function getGender()
     return IsPedModel(cache.ped, `mp_f_freemode_01`) and 'female' or 'male'
 end
@@ -42,7 +53,7 @@ local function unequip(name, skipSync)
 end
 
 local function equip(name, skipSync)
-    local def = config.items[name]
+    local def = clothingDefs[name]
     if not def then return end
     local gender = getGender()
 
@@ -110,28 +121,30 @@ if config.devCapture then
             for i = 2, #args do wantComponents[#wantComponents + 1] = tonumber(args[i]) end
         end
 
-        local out = { ("['%s'] = {"):format(name), ("    label = '%s',"):format(name), '    pieces = {' }
+        local pieces = {}
         for _, id in ipairs(wantComponents) do
             if id then
-                local d, t = GetPedDrawableVariation(ped, id), GetPedTextureVariation(ped, id)
-                out[#out + 1] = ("        { type = 'component', id = %d, %s = { drawable = %d, texture = %d } },"):format(id, gender, d, t)
+                pieces[#pieces + 1] = { type = 'component', id = id, [gender] = { drawable = GetPedDrawableVariation(ped, id), texture = GetPedTextureVariation(ped, id) } }
             end
         end
         for _, id in ipairs({ 0, 1, 2, 6, 7 }) do
             local d = GetPedPropIndex(ped, id)
             if d ~= -1 then
-                out[#out + 1] = ("        { type = 'prop', id = %d, %s = { drawable = %d, texture = %d } },"):format(id, gender, d, GetPedPropTextureIndex(ped, id))
+                pieces[#pieces + 1] = { type = 'prop', id = id, [gender] = { drawable = d, texture = GetPedPropTextureIndex(ped, id) } }
             end
         end
-        out[#out + 1] = '    },'
-        out[#out + 1] = '},'
-        print('\n[outfitcapture] (' .. gender .. ') — kopiraj u config/clothing.lua:\n' .. table.concat(out, '\n') .. '\n')
-        exports.qbx_core:Notify('Snippet ispisan u F8 konzoli', 'success')
+        -- server spaja varijante (capture-uj isti item na M pa na Ž da imaš oba spola) i snima u json
+        TriggerServerEvent('qbx_core:server:captureClothing', name, { label = name, pieces = pieces })
     end, false)
+
+    RegisterNetEvent('qbx_core:client:captureDone', function(name)
+        exports.qbx_core:Notify(('Odjeća "%s" (%s) sačuvana u clothing.json'):format(name, getGender()), 'success')
+    end)
 end
 
 -- traži sačuvanu odjeću kad se igrač učita (illenium do tad postavi osnovni izgled)
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
+    fetchDefs()
     SetTimeout(2000, function() TriggerServerEvent('qbx_core:server:requestClothing') end)
 end)
 
