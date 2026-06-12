@@ -23,14 +23,19 @@ if not enable then return end
 assert(lib.checkDependency('qbx_vehicles', '1.4.1', true))
 
 local function getVehicleId(vehicle)
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return end
     return Entity(vehicle).state.vehicleid or exports.qbx_vehicles:GetVehicleIdByPlate(GetVehicleNumberPlateText(vehicle))
 end
 
 RegisterNetEvent('qbx_core:server:vehiclePropsChanged', function(netId, diff)
+    if type(netId) ~= 'number' or type(diff) ~= 'table' then return end
+
     local vehicle = NetworkGetEntityFromNetworkId(netId)
 
     local vehicleId = getVehicleId(vehicle)
     if not vehicleId then return end
+
+    if #(GetEntityCoords(GetPlayerPed(source)) - GetEntityCoords(vehicle)) > 10.0 then return end
 
     local props = exports.qbx_vehicles:GetPlayerVehicle(vehicleId)?.props
     if not props then return end
